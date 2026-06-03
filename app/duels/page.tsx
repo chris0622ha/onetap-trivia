@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { db, auth, googleProvider } from "../lib/firebase";
