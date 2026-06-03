@@ -181,7 +181,7 @@ export default function Home() {
           setQIndex(idx + 1);
           setOptions(shuffle([next.a, ...next.w]));
           setSelected(null);
-          setTimeLeft(timer === 0 ? 99 : timer);
+          const td = gameStateRef.current.timerDuration; setTimeLeft(td === 0 ? 99 : td);
           setAnim("");
           answerRef.current = false;
         }
@@ -215,7 +215,7 @@ export default function Home() {
     setQIndex(0);
     setOptions(firstOpts);
     setSelected(null);
-    setTimeLeft(3);
+    setTimeLeft(timer === 0 ? 99 : timer);
     setStreak(0);
     setBestStreak(0);
     setScore(0);
