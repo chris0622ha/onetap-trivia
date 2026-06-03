@@ -233,6 +233,8 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
   const [friendMsg, setFriendMsg] = useState("");
   const [friendProfiles, setFriendProfiles] = useState<any[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
+  const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
 
   const changesLeft = userData?.usernameChangesLeft ?? 3;
   const displayName = userData?.username || user.displayName?.split(" ")[0] || "Player";
@@ -242,11 +244,23 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
 
   useEffect(() => {
     if (tab !== "friends") return;
+    // Load friends
     const ids: string[] = userData?.friendIds || [];
-    if (!ids.length) { setFriendProfiles([]); return; }
     setLoadingFriends(true);
-    Promise.all(ids.map((id: string) => get(ref(db, `users/${id}`)).then(s => s.exists() ? { uid: id, ...s.val() } : null)))
-      .then(results => { setFriendProfiles(results.filter(Boolean)); setLoadingFriends(false); });
+    if (ids.length) {
+      Promise.all(ids.map((id: string) => get(ref(db, `users/${id}`)).then(s => s.exists() ? { uid: id, ...s.val() } : null)))
+        .then(results => { setFriendProfiles(results.filter(Boolean)); setLoadingFriends(false); });
+    } else {
+      setFriendProfiles([]); setLoadingFriends(false);
+    }
+    // Load incoming requests
+    setLoadingRequests(true);
+    get(ref(db, `friendRequests/${user.uid}`)).then(snap => {
+      if (!snap.exists()) { setIncomingRequests([]); setLoadingRequests(false); return; }
+      const reqs = Object.entries(snap.val()).map(([fromUid, data]: [string, any]) => ({ fromUid, ...data }));
+      setIncomingRequests(reqs);
+      setLoadingRequests(false);
+    });
   }, [tab, userData?.friendIds]);
 
   async function saveProfile() {
@@ -278,19 +292,16 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
     setTimeout(() => setSaveMsg(""), 2000);
   }
 
-  async function addFriend() {
+  async function sendFriendRequest() {
     setFriendError(""); setFriendMsg("");
     const input = friendInput.trim();
     if (!input) return;
 
     let targetUid: string | null = null;
-
-    // Try as Friend ID (UID) first
     const snapDirect = await get(ref(db, `users/${input}`));
     if (snapDirect.exists()) {
       targetUid = input;
     } else {
-      // Try as username lookup
       const snapUN = await get(ref(db, `usernames/${input.toLowerCase()}`));
       if (snapUN.exists()) targetUid = snapUN.val();
     }
@@ -300,12 +311,47 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
     const existing: string[] = userData?.friendIds || [];
     if (existing.includes(targetUid)) { setFriendError("Already friends"); return; }
 
-    const newFriends = [...existing, targetUid];
-    await update(ref(db, `users/${user.uid}`), { friendIds: newFriends });
-    onUserDataChange({ ...userData, friendIds: newFriends });
-    setFriendMsg("Friend added!");
+    // Check if request already sent
+    const alreadySent = await get(ref(db, `friendRequests/${targetUid}/${user.uid}`));
+    if (alreadySent.exists()) { setFriendError("Request already sent"); return; }
+
+    // Check if they already sent us a request — auto-accept
+    const theyRequested = await get(ref(db, `friendRequests/${user.uid}/${targetUid}`));
+    if (theyRequested.exists()) {
+      await acceptFriendRequest(targetUid, theyRequested.val().fromUsername);
+      return;
+    }
+
+    await set(ref(db, `friendRequests/${targetUid}/${user.uid}`), {
+      fromUid: user.uid,
+      fromUsername: userData?.username || "Unknown",
+      fromPhotoURL: userData?.photoURL || user.photoURL || null,
+      sentAt: Date.now(),
+    });
+    setFriendMsg("Request sent!");
     setFriendInput("");
-    setTimeout(() => setFriendMsg(""), 2000);
+    setTimeout(() => setFriendMsg(""), 2500);
+  }
+
+  async function acceptFriendRequest(fromUid: string, fromUsername: string) {
+    const myFriends = [...(userData?.friendIds || []), fromUid];
+    // Add each other mutually
+    const theirSnap = await get(ref(db, `users/${fromUid}`));
+    const theirFriends = theirSnap.exists() ? [...(theirSnap.val().friendIds || []), user.uid] : [user.uid];
+    const updates: any = {};
+    updates[`users/${user.uid}/friendIds`] = myFriends;
+    updates[`users/${fromUid}/friendIds`] = theirFriends;
+    updates[`friendRequests/${user.uid}/${fromUid}`] = null;
+    await update(ref(db), updates);
+    onUserDataChange({ ...userData, friendIds: myFriends });
+    setIncomingRequests(r => r.filter(req => req.fromUid !== fromUid));
+    setFriendMsg(`You and ${fromUsername} are now friends!`);
+    setTimeout(() => setFriendMsg(""), 2500);
+  }
+
+  async function declineFriendRequest(fromUid: string) {
+    await set(ref(db, `friendRequests/${user.uid}/${fromUid}`), null);
+    setIncomingRequests(r => r.filter(req => req.fromUid !== fromUid));
   }
 
   async function removeFriend(uid: string) {
@@ -315,13 +361,23 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
     setFriendProfiles(fp => fp.filter(f => f.uid !== uid));
   }
 
-  const TabBtn = ({ id, label }: { id: typeof tab; label: string }) => (
+  const pendingRequestCount = incomingRequests.length;
+
+  const TabBtn = ({ id, label, badge }: { id: typeof tab; label: string; badge?: number }) => (
     <button onClick={() => setTab(id)} style={{
       flex:1, background: tab === id ? "rgba(245,158,11,0.15)" : "transparent",
       border:"none", borderBottom: `2px solid ${tab === id ? "#f59e0b" : "transparent"}`,
       color: tab === id ? "#f59e0b" : "#6b7280", fontSize:13, fontWeight:700,
-      padding:"10px 0", cursor:"pointer", transition:"all 0.15s",
-    }}>{label}</button>
+      padding:"10px 0", cursor:"pointer", transition:"all 0.15s", position:"relative",
+    }}>
+      {label}
+      {badge && badge > 0 ? (
+        <span style={{ marginLeft:5, background:"#ef4444", borderRadius:"99px",
+          fontSize:10, fontWeight:900, color:"#fff", padding:"1px 5px", verticalAlign:"middle" }}>
+          {badge}
+        </span>
+      ) : null}
+    </button>
   );
 
   return (
@@ -358,7 +414,7 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
         <div style={{ display:"flex", borderBottom:"1px solid #2d2d44" }}>
           <TabBtn id="stats" label="Stats" />
           <TabBtn id="edit" label="Edit Profile" />
-          <TabBtn id="friends" label="Friends" />
+          <TabBtn id="friends" label="Friends" badge={incomingRequests.length} />
         </div>
 
         <div style={{ padding:"20px 24px 24px", maxHeight:420, overflowY:"auto" }}>
@@ -497,32 +553,75 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
 
           {/* FRIENDS TAB */}
           {tab === "friends" && (<>
+
+            {/* Incoming requests */}
+            {incomingRequests.length > 0 && (
+              <div style={{ marginBottom:18 }}>
+                <div style={{ fontSize:11, color:"#10b981", textTransform:"uppercase",
+                  letterSpacing:"0.05em", fontWeight:700, marginBottom:10 }}>
+                  Pending requests ({incomingRequests.length})
+                </div>
+                {incomingRequests.map(req => (
+                  <div key={req.fromUid} style={{ display:"flex", alignItems:"center", gap:10,
+                    padding:"10px 12px", background:"rgba(16,185,129,0.06)",
+                    border:"1px solid rgba(16,185,129,0.2)", borderRadius:10, marginBottom:8 }}>
+                    {req.fromPhotoURL ? (
+                      <img src={req.fromPhotoURL} alt="" width={36} height={36}
+                        style={{ borderRadius:"50%", border:"2px solid #2d2d44", flexShrink:0 }} />
+                    ) : (
+                      <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(16,185,129,0.2)",
+                        border:"2px solid #2d2d44", display:"flex", alignItems:"center", justifyContent:"center",
+                        fontSize:14, fontWeight:900, color:"#10b981", flexShrink:0 }}>
+                        {(req.fromUsername || "?")[0].toUpperCase()}
+                      </div>
+                    )}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontSize:14 }}>{req.fromUsername}</div>
+                      <div style={{ fontSize:11, color:"#6b7280" }}>wants to be friends</div>
+                    </div>
+                    <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                      <button onClick={() => acceptFriendRequest(req.fromUid, req.fromUsername)} style={{
+                        background:"rgba(16,185,129,0.2)", border:"1px solid rgba(16,185,129,0.5)",
+                        borderRadius:8, color:"#10b981", fontSize:12, fontWeight:700,
+                        padding:"6px 12px", cursor:"pointer" }}>Accept</button>
+                      <button onClick={() => declineFriendRequest(req.fromUid)} style={{
+                        background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.3)",
+                        borderRadius:8, color:"#ef4444", fontSize:12, fontWeight:700,
+                        padding:"6px 12px", cursor:"pointer" }}>Decline</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add friend */}
             <div style={{ marginBottom:16 }}>
               <div style={{ fontSize:11, color:"#6b7280", textTransform:"uppercase",
-                letterSpacing:"0.05em", marginBottom:8 }}>Add by Friend ID or username</div>
+                letterSpacing:"0.05em", marginBottom:8 }}>Add by username or Friend ID</div>
               <div style={{ display:"flex", gap:8 }}>
                 <input
                   value={friendInput}
                   placeholder="username or Friend ID"
                   onChange={e => { setFriendInput(e.target.value); setFriendError(""); setFriendMsg(""); }}
-                  onKeyDown={e => e.key === "Enter" && addFriend()}
+                  onKeyDown={e => e.key === "Enter" && sendFriendRequest()}
                   style={{ flex:1, background:"#0f0f1a", border:"1px solid #2d2d44",
                     borderRadius:10, color:"#fff", fontSize:14, padding:"10px 12px",
                     outline:"none", boxSizing:"border-box" as const }}
                 />
-                <button onClick={addFriend} style={{
+                <button onClick={sendFriendRequest} style={{
                   background:"rgba(245,158,11,0.15)", border:"1px solid rgba(245,158,11,0.4)",
                   borderRadius:10, color:"#f59e0b", fontWeight:800, fontSize:14,
                   padding:"10px 14px", cursor:"pointer", flexShrink:0,
-                }}>Add</button>
+                }}>Send</button>
               </div>
               {friendError && <div style={{ color:"#ef4444", fontSize:12, marginTop:6 }}>{friendError}</div>}
               {friendMsg && <div style={{ color:"#10b981", fontSize:12, marginTop:6, fontWeight:700 }}>{friendMsg}</div>}
               <div style={{ fontSize:11, color:"#4b5563", marginTop:6 }}>
-                Your Friend ID: <span style={{ color:"#9ca3af", fontFamily:"monospace" }}>{user.uid}</span>
+                Your Friend ID: <span style={{ color:"#9ca3af", fontFamily:"monospace", fontSize:10 }}>{user.uid}</span>
               </div>
             </div>
 
+            {/* Friends list */}
             <div style={{ fontSize:11, color:"#6b7280", textTransform:"uppercase",
               letterSpacing:"0.05em", marginBottom:10 }}>
               Friends ({(userData?.friendIds || []).length})
@@ -532,7 +631,7 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
               <div style={{ color:"#6b7280", fontSize:13, textAlign:"center", padding:"12px 0" }}>Loading…</div>
             ) : friendProfiles.length === 0 ? (
               <div style={{ color:"#4b5563", fontSize:13, textAlign:"center", padding:"12px 0" }}>
-                No friends yet. Add someone above!
+                No friends yet — send a request above!
               </div>
             ) : friendProfiles.map(fp => (
               <div key={fp.uid} style={{ display:"flex", alignItems:"center", gap:10,
@@ -657,6 +756,17 @@ export default function Home() {
     });
     return () => off(lbRef);
   }, []);
+
+  // Live incoming friend request count for badge
+  const [pendingCount, setPendingCount] = useState(0);
+  useEffect(() => {
+    if (!user) { setPendingCount(0); return; }
+    const reqRef = ref(db, `friendRequests/${user.uid}`);
+    const unsub = onValue(reqRef, snap => {
+      setPendingCount(snap.exists() ? Object.keys(snap.val()).length : 0);
+    });
+    return () => off(reqRef);
+  }, [user?.uid]);
 
   const endGame = useCallback(
     async (finalScore: number, finalBest: number, finalCorrect: number, finalTotal: number, finalCat: string) => {
@@ -820,16 +930,26 @@ export default function Home() {
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <button onClick={() => setModal("profile")} title="View your profile"
             style={{ background:"transparent", border:"none", cursor:"pointer", padding:0, display:"flex", alignItems:"center", gap:8 }}>
-            {(userData?.photoURL || user.photoURL) ? (
-              <img src={userData?.photoURL || user.photoURL} alt="" width={32} height={32}
-                style={{ borderRadius:"50%", border:"2px solid #f59e0b", display:"block" }} />
-            ) : (
-              <div style={{ width:32, height:32, borderRadius:"50%", background:"rgba(245,158,11,0.2)",
-                border:"2px solid #f59e0b", display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:14, fontWeight:900, color:"#f59e0b" }}>
-                {(userData?.username || user.email || "?")[0].toUpperCase()}
-              </div>
-            )}
+            <div style={{ position:"relative", display:"inline-block" }}>
+              {(userData?.photoURL || user.photoURL) ? (
+                <img src={userData?.photoURL || user.photoURL} alt="" width={32} height={32}
+                  style={{ borderRadius:"50%", border:"2px solid #f59e0b", display:"block" }} />
+              ) : (
+                <div style={{ width:32, height:32, borderRadius:"50%", background:"rgba(245,158,11,0.2)",
+                  border:"2px solid #f59e0b", display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:14, fontWeight:900, color:"#f59e0b" }}>
+                  {(userData?.username || user.email || "?")[0].toUpperCase()}
+                </div>
+              )}
+              {pendingCount > 0 && (
+                <div style={{ position:"absolute", top:-3, right:-3, width:16, height:16,
+                  borderRadius:"50%", background:"#ef4444", border:"2px solid #0f0f1a",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:9, fontWeight:900, color:"#fff", lineHeight:1 }}>
+                  {pendingCount > 9 ? "9+" : pendingCount}
+                </div>
+              )}
+            </div>
             <span style={{ color:"#e5e7eb", fontSize:13, fontWeight:600, maxWidth:100, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
               {userData?.username || user.displayName?.split(" ")[0] || user.email?.split("@")[0]}
             </span>
