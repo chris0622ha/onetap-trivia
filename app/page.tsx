@@ -79,6 +79,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [modal, setModal] = useState<"about"|"updates"|null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Settings
   const [category, setCategory] = useState("all");
@@ -124,6 +125,14 @@ export default function Home() {
     const handler = (e: Event) => setModal((e as CustomEvent).detail);
     window.addEventListener("onetap-modal", handler);
     return () => window.removeEventListener("onetap-modal", handler);
+  }, []);
+
+  // Responsive breakpoint
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 700);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
   }, []);
 
   // Subscribe to global leaderboard
@@ -366,7 +375,7 @@ export default function Home() {
       </div>
 
       {/* Name field — full width above columns */}
-      <div style={{ width: "100%", maxWidth: 860, background: "#1a1a2e", borderRadius: 16, padding: "16px 24px", marginBottom: 16 }}>
+      <div style={{ width: "100%", maxWidth: isMobile ? 460 : 860, background: "#1a1a2e", borderRadius: 16, padding: "16px 24px", marginBottom: 16 }}>
         <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Your name</div>
         <input
           value={name}
@@ -377,7 +386,7 @@ export default function Home() {
       </div>
 
       {/* Two-column layout */}
-      <div style={{ width: "100%", maxWidth: 860, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
+      <div style={{ width: "100%", maxWidth: isMobile ? 460 : 860, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16, alignItems: "start" }}>
 
         {/* LEFT — Solo */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
