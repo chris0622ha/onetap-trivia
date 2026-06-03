@@ -402,6 +402,7 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
   );
 
   return (
+    <>
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:300,
       display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
       <div onClick={e => e.stopPropagation()} style={{ background:"#1a1a2e", border:"1px solid #2d2d44",
@@ -709,6 +710,7 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
         onClose={() => setChatFriend(null)}
       />
     )}
+    </>
   );
 }
 
