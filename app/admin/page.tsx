@@ -128,7 +128,7 @@ function StatsPanel() {
         <Stat label="Total Games" value={stats.totalGames.toLocaleString()} color="#10b981" />
         <Stat label="Active Today" value={stats.playedToday} color="#6366f1" />
         <Stat label="Top Score" value={stats.topScore.toLocaleString()} color="#ef4444" />
-        <Stat label="LB Entries" value={stats.lbEntries} color="#f59e0b" />
+        <Stat label="Leaderboard Entries" value={stats.lbEntries} color="#f59e0b" />
         <Stat label="Active Bans" value={stats.activeBans} color="#ef4444" />
         <Stat label="Accuracy" value={`${acc}%`} color="#10b981" sub={`${stats.totalCorrect.toLocaleString()} / ${stats.totalQuestions.toLocaleString()}`} />
         <Stat label="Top Category" value={CAT_EMOJI[stats.topCat]||"—"} color="#f59e0b" sub={stats.topCat} />
