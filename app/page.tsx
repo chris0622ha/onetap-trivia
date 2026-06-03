@@ -207,8 +207,25 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
   const [newPhotoURL, setNewPhotoURL] = useState(userData?.photoURL || user.photoURL || "");
   const [usernameError, setUsernameError] = useState("");
   const [photoError, setPhotoError] = useState("");
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setPhotoError("Image must be under 2 MB"); return; }
+    setPhotoError("");
+    setPhotoUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setNewPhotoURL(reader.result as string);
+      setPhotoUploading(false);
+    };
+    reader.onerror = () => { setPhotoError("Failed to read file"); setPhotoUploading(false); };
+    reader.readAsDataURL(file);
+  }
 
   // Friends tab state
   const [friendInput, setFriendInput] = useState("");
@@ -414,21 +431,57 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
 
             <div style={{ marginBottom:20 }}>
               <div style={{ fontSize:11, color:"#6b7280", textTransform:"uppercase",
-                letterSpacing:"0.05em", marginBottom:8 }}>Profile picture URL</div>
+                letterSpacing:"0.05em", marginBottom:8 }}>Profile picture</div>
+
+              {/* Hidden file input — accept triggers iOS native sheet: Photo Library / Take Photo / Files */}
               <input
-                value={newPhotoURL}
-                placeholder="https://..."
-                onChange={e => { setNewPhotoURL(e.target.value); setPhotoError(""); }}
-                style={{ width:"100%", background:"#0f0f1a", border:`1px solid ${photoError ? "#ef4444" : "#2d2d44"}`,
-                  borderRadius:10, color:"#fff", fontSize:14, padding:"11px 14px",
-                  outline:"none", boxSizing:"border-box" }}
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                style={{ display:"none" }}
               />
-              {photoError && <div style={{ color:"#ef4444", fontSize:12, marginTop:4 }}>{photoError}</div>}
-              {newPhotoURL && (
-                <img src={newPhotoURL} alt="" onError={() => setPhotoError("Could not load image")}
-                  style={{ width:48, height:48, borderRadius:"50%", marginTop:10,
-                    border:"2px solid #2d2d44", display:"block" }} />
-              )}
+
+              <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                {/* Preview */}
+                <div style={{ flexShrink:0 }}>
+                  {newPhotoURL ? (
+                    <img src={newPhotoURL} alt=""
+                      style={{ width:64, height:64, borderRadius:"50%", border:"2px solid #f59e0b", display:"block", objectFit:"cover" }} />
+                  ) : (
+                    <div style={{ width:64, height:64, borderRadius:"50%", background:"rgba(255,255,255,0.06)",
+                      border:"2px dashed #2d2d44", display:"flex", alignItems:"center", justifyContent:"center",
+                      fontSize:24, color:"#4b5563" }}>
+                      👤
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ flex:1 }}>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={photoUploading}
+                    style={{ width:"100%", background:"rgba(255,255,255,0.06)", border:"1px solid #2d2d44",
+                      borderRadius:10, color: photoUploading ? "#6b7280" : "#e5e7eb",
+                      fontSize:14, fontWeight:600, padding:"11px 14px", cursor: photoUploading ? "default" : "pointer",
+                      textAlign:"left" as const }}
+                  >
+                    {photoUploading ? "Loading…" : newPhotoURL ? "Change photo" : "Choose photo"}
+                  </button>
+                  {newPhotoURL && (
+                    <button
+                      onClick={() => { setNewPhotoURL(""); setPhotoError(""); }}
+                      style={{ marginTop:6, background:"transparent", border:"none",
+                        color:"#ef4444", fontSize:12, cursor:"pointer", padding:0 }}
+                    >
+                      Remove photo
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {photoError && <div style={{ color:"#ef4444", fontSize:12, marginTop:8 }}>{photoError}</div>}
+              <div style={{ fontSize:11, color:"#4b5563", marginTop:6 }}>JPG, PNG, GIF · max 2 MB</div>
             </div>
 
             <button onClick={saveProfile} disabled={saving} style={{
