@@ -319,13 +319,34 @@ export default function MultiplayerPage() {
         <input type="number" min={2} max={50} value={maxPlayers} onChange={e => setMaxPlayers(Number(e.target.value))}
           style={s.input} />
 
-        <div style={s.label}>Timer Speed</div>
-        <div style={{ display:"flex", gap:6, marginBottom:18 }}>
-          {TIMER_OPTIONS.map(({ label, value }) => (
-            <button key={value} style={s.toggle(timerDuration === value)} onClick={() => setTimerDuration(value)}>
-              {label}
-            </button>
-          ))}
+        <div style={s.label}>Timer (seconds)</div>
+        <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:18 }}>
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={3}
+            value={timerDuration === 0 ? "" : String(timerDuration)}
+            placeholder="e.g. 3"
+            disabled={timerDuration === 0}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === "∞") { setTimerDuration(0); return; }
+              const cleaned = raw.replace(/[^0-9]/g, "");
+              if (cleaned === "") return;
+              setTimerDuration(Math.min(900, Math.max(1, Number(cleaned) || 1)));
+            }}
+            style={{ ...s.input, marginBottom:0, flex:1, fontSize:18, fontWeight:700, textAlign:"center",
+              opacity: timerDuration === 0 ? 0.4 : 1,
+              border: `1px solid ${timerDuration === 0 ? "#2d2d44" : "#f59e0b"}`,
+              color: timerDuration === 0 ? "#4b5563" : "#fff",
+            }}
+          />
+          <button
+            onClick={() => setTimerDuration(timerDuration === 0 ? 3 : 0)}
+            style={{ ...s.toggle(timerDuration === 0), fontSize:20, padding:"11px 18px", flexShrink:0, marginBottom:0 }}
+          >
+            ∞
+          </button>
         </div>
 
         <div style={s.label}>Options</div>
