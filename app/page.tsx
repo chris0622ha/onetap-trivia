@@ -425,22 +425,47 @@ export default function Home() {
 
           {/* Timer speed */}
           <div style={{ background: "#1a1a2e", borderRadius: 16, padding: "16px 20px" }}>
-            <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 10, letterSpacing: "0.05em", textTransform: "uppercase" }}>Timer speed</div>
-            <div style={{ display: "flex", gap: 6 }}>
-              {TIMER_OPTIONS.map(({ label, value }) => (
-                <button
-                  key={value}
-                  onClick={() => { setTimerDuration(value); try { localStorage.setItem("onetap_timer", String(value)); } catch {} }}
-                  style={{
-                    flex: 1, background: timerDuration === value ? "rgba(245,158,11,0.2)" : "rgba(255,255,255,0.04)",
-                    border: `1px solid ${timerDuration === value ? "#f59e0b" : "#2d2d44"}`,
-                    borderRadius: 10, color: timerDuration === value ? "#f59e0b" : "#9ca3af",
-                    fontSize: 13, fontWeight: 700, padding: "10px 0", cursor: "pointer", transition: "all 0.15s",
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
+            <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 10, letterSpacing: "0.05em", textTransform: "uppercase" }}>Timer (seconds)</div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={3}
+                value={timerDuration === 0 ? "" : String(timerDuration)}
+                placeholder="e.g. 3"
+                disabled={timerDuration === 0}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "∞") { setTimerDuration(0); try { localStorage.setItem("onetap_timer", "0"); } catch {} return; }
+                  const cleaned = raw.replace(/[^0-9]/g, "");
+                  const num = Math.min(900, Math.max(1, Number(cleaned) || 1));
+                  if (cleaned === "") return;
+                  setTimerDuration(num);
+                  try { localStorage.setItem("onetap_timer", String(num)); } catch {}
+                }}
+                style={{
+                  flex: 1, background: timerDuration === 0 ? "rgba(255,255,255,0.02)" : "#0f0f1a",
+                  border: `1px solid ${timerDuration === 0 ? "#2d2d44" : "#f59e0b"}`,
+                  borderRadius: 10, color: timerDuration === 0 ? "#4b5563" : "#fff",
+                  fontSize: 18, fontWeight: 700, padding: "10px 14px", outline: "none",
+                  textAlign: "center", opacity: timerDuration === 0 ? 0.4 : 1,
+                }}
+              />
+              <button
+                onClick={() => {
+                  const next = timerDuration === 0 ? 3 : 0;
+                  setTimerDuration(next);
+                  try { localStorage.setItem("onetap_timer", String(next)); } catch {}
+                }}
+                style={{
+                  background: timerDuration === 0 ? "rgba(245,158,11,0.2)" : "rgba(255,255,255,0.04)",
+                  border: `1px solid ${timerDuration === 0 ? "#f59e0b" : "#2d2d44"}`,
+                  borderRadius: 10, color: timerDuration === 0 ? "#f59e0b" : "#9ca3af",
+                  fontSize: 20, fontWeight: 700, padding: "10px 18px", cursor: "pointer", transition: "all 0.15s", flexShrink: 0,
+                }}
+              >
+                ∞
+              </button>
             </div>
           </div>
 
