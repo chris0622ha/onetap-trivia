@@ -1329,6 +1329,8 @@ export default function Home() {
       </div>
 
       <div style={{ width:"100%", maxWidth: isMobile ? 460 : 860, display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap:16, alignItems:"start" }}>
+
+        {/* LEFT — Solo + Duels */}
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
           <div style={{ fontSize:11, color:"#f59e0b", fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase", paddingLeft:4 }}>⚡ Solo</div>
           <div style={{ background:"#1a1a2e", borderRadius:16, padding:"16px 20px" }}>
@@ -1382,13 +1384,28 @@ export default function Home() {
             style={{ background:"linear-gradient(135deg, #f59e0b, #ef4444)", border:"none", borderRadius:14, color:"#fff", fontSize:"1.1rem", fontWeight:800, padding:"16px", cursor:"pointer", width:"100%" }}>
             START GAME ⚡
           </button>
+
+          {/* Duels — big green button below solo on desktop, above multiplayer on mobile */}
+          <a href="/duels" style={{
+            display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+            background:"linear-gradient(135deg, #10b981, #059669)",
+            border:"none", borderRadius:14, color:"#fff",
+            fontSize:"1.15rem", fontWeight:900, padding:"18px 16px",
+            cursor:"pointer", textDecoration:"none", width:"100%",
+            boxSizing:"border-box", letterSpacing:"0.01em",
+            boxShadow:"0 4px 24px rgba(16,185,129,0.3)",
+          }}>
+            <span style={{ fontSize:22 }}>⚔️</span>
+            <span>Duels</span>
+            <span style={{ fontSize:12, fontWeight:600, opacity:0.8, background:"rgba(0,0,0,0.2)", borderRadius:99, padding:"2px 8px" }}>1v1</span>
+          </a>
         </div>
 
+        {/* RIGHT — Multiplayer + Leaderboard */}
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
           <div style={{ fontSize:11, color:"#10b981", fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase", paddingLeft:4 }}>🎮 Multiplayer</div>
           <div style={{ background:"#1a1a2e", borderRadius:16, padding:"16px 20px", display:"flex", flexDirection:"column", gap:10 }}>
             <a href="/multiplayer" style={{ display:"block", background:"rgba(16,185,129,0.15)", border:"1px solid rgba(16,185,129,0.4)", borderRadius:10, color:"#10b981", fontSize:"1rem", fontWeight:800, padding:"13px", cursor:"pointer", textAlign:"center", textDecoration:"none" }}>🎮 Host a Game</a>
-            <a href="/duels" style={{ display:"block", background:"rgba(99,102,241,0.15)", border:"1px solid rgba(99,102,241,0.4)", borderRadius:10, color:"#a5b4fc", fontSize:"1rem", fontWeight:800, padding:"13px", cursor:"pointer", textAlign:"center", textDecoration:"none" }}>⚔️ Duels — 1v1 Matchmaking</a>
             <div style={{ fontSize:11, color:"#4b5563", textAlign:"center", letterSpacing:"0.05em" }}>— or join with a code —</div>
             <input id="jc" maxLength={6} placeholder="GAME CODE"
               style={{ width:"100%", background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:10, color:"#fff", fontSize:18, fontWeight:700, letterSpacing:"0.3em", padding:"11px 14px", outline:"none", textTransform:"uppercase", boxSizing:"border-box", textAlign:"center" }} />
