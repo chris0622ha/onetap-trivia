@@ -870,12 +870,12 @@ export default function Home() {
         </div>
         <div style={{ maxHeight: expanded ? 420 : "none", overflowY: expanded ? "auto" : "visible" }}>
           {visible.map((e, i) => {
-            const rankColor = i === 0 ? "#f59e0b" : i === 1 ? "#9ca3af" : i === 2 ? "#cd7c3a" : "#4b5563";
-            const rankLabel = i === 0 ? "1st" : i === 1 ? "2nd" : i === 2 ? "3rd" : `${i + 1}`;
+            const rankLabel = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`;
+            const rankColor = i < 3 ? undefined : "#4b5563";
             return (
               <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 6px", borderBottom:"1px solid #2d2d44" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <span style={{ fontSize:12, fontWeight:800, color: rankColor, width:28, textAlign:"right", flexShrink:0 }}>{rankLabel}</span>
+                  <span style={{ fontSize: i < 3 ? 18 : 12, fontWeight:800, color: rankColor, width:28, textAlign:"right", flexShrink:0 }}>{rankLabel}</span>
                   <div>
                     <span style={{ color:"#e5e7eb", fontWeight:600, fontSize:14 }}>{e.name}</span>
                     <div style={{ fontSize:10, color:"#4b5563" }}>{CATEGORY_MAP[e.category]?.emoji} {CATEGORY_MAP[e.category]?.label ?? e.category}</div>
@@ -896,7 +896,7 @@ export default function Home() {
               fontSize:12, fontWeight:600, padding:"10px 0 0", cursor:"pointer",
               letterSpacing:"0.05em", textTransform:"uppercase" }}
           >
-            {expanded ? "Show less ▲" : `Show all ${globalLB.length} ▼`}
+            {expanded ? "Show less ▲" : "Show all ▼"}
           </button>
         )}
       </div>
