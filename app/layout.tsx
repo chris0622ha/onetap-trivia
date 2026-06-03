@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "QuicTriv",
-  description: "Lightning-fast trivia. 3 seconds. No mercy.",
+  title: "TrivQuic",
+  description: "Fast trivia. No mercy.",
 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return <html lang="en"><body>{children}</body></html>;
 }
+
