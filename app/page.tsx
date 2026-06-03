@@ -206,6 +206,8 @@ export default function Home() {
     } catch {}
   }, []);
 
+  const resultsRef = useRef({ score: 0, correct: 0, total: 0, bestStreak: 0 });
+
   const endGame = useCallback((finalScore: number, finalBest: number, finalCorrect: number, finalTotal: number) => {
     if (timerRef.current) clearInterval(timerRef.current);
     const entry = { name: name || "Anonymous", score: finalScore, streak: finalBest, date: new Date().toLocaleDateString() };
@@ -214,6 +216,7 @@ export default function Home() {
       try { localStorage.setItem("onetap_lb2", JSON.stringify(updated)); } catch {}
       return updated;
     });
+    resultsRef.current = { score: finalScore, correct: finalCorrect, total: finalTotal, bestStreak: finalBest };
     setScore(finalScore); setCorrect(finalCorrect); setTotal(finalTotal); setBestStreak(finalBest);
     setScreen("result");
   }, [name]);
@@ -308,15 +311,17 @@ export default function Home() {
     </div>
   );
 
-  if (screen === "result") return (
+  if (screen === "result") {
+    const r = resultsRef.current;
+    return (
     <div style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"20px", color:"#fff" }}>
       <div style={{ textAlign:"center", marginBottom:32 }}>
-        <div style={{ fontSize:64, marginBottom:8 }}>{correct >= 17 ? "🏆" : correct >= 12 ? "🔥" : correct >= 7 ? "👍" : "💀"}</div>
-        <h2 style={{ fontSize:"2rem", fontWeight:900, margin:0 }}>{correct >= 17 ? "Legendary!" : correct >= 12 ? "On Fire!" : correct >= 7 ? "Not Bad!" : "Keep Practicing!"}</h2>
-        <p style={{ color:"#6b7280", marginTop:6 }}>{correct}/{total} correct</p>
+        <div style={{ fontSize:64, marginBottom:8 }}>{r.correct >= 17 ? "🏆" : r.correct >= 12 ? "🔥" : r.correct >= 7 ? "👍" : "💀"}</div>
+        <h2 style={{ fontSize:"2rem", fontWeight:900, margin:0 }}>{r.correct >= 17 ? "Legendary!" : r.correct >= 12 ? "On Fire!" : r.correct >= 7 ? "Not Bad!" : "Keep Practicing!"}</h2>
+        <p style={{ color:"#6b7280", marginTop:6 }}>{r.correct}/{r.total} correct</p>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:32, width:"100%", maxWidth:400 }}>
-        {[["Score", score, "#f59e0b"], ["Best Streak", bestStreak + "🔥", "#ef4444"], ["Accuracy", Math.round((correct/(total||1))*100) + "%", "#10b981"]].map(([label, val, color]) => (
+        {[["Score", r.score, "#f59e0b"], ["Best Streak", r.bestStreak + "🔥", "#ef4444"], ["Accuracy", Math.round((r.correct/(r.total||1))*100) + "%", "#10b981"]].map(([label, val, color]) => (
           <div key={label as string} style={{ background:"#1a1a2e", borderRadius:12, padding:"16px 12px", textAlign:"center" }}>
             <div style={{ fontSize:22, fontWeight:900, color:color as string }}>{val}</div>
             <div style={{ fontSize:11, color:"#6b7280", marginTop:4, textTransform:"uppercase", letterSpacing:"0.05em" }}>{label}</div>
@@ -329,7 +334,7 @@ export default function Home() {
       </div>
       <LeaderboardView />
     </div>
-  );
+  );}
 
   if (!q) return null;
 
