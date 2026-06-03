@@ -56,8 +56,10 @@ function UsersPanel() {
   const [selected, setSelected] = useState<any>(null);
   const [msg, setMsg] = useState<{text:string;type:"success"|"error"|"info"}|null>(null);
   const [editScore, setEditScore] = useState("");
-  const [editStreakVal, setEditStreakVal] = useState("");
-  const [resetChanges, setResetChanges] = useState(false);
+  const [editStreak, setEditStreak] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [editChangesLeft, setEditChangesLeft] = useState("");
+  const [editGamesPlayed, setEditGamesPlayed] = useState("");
 
   const flash = (text: string, type: "success"|"error"|"info" = "success") => {
     setMsg({ text, type });
@@ -89,11 +91,52 @@ function UsersPanel() {
     flash(`Deleted leaderboard entries for ${username}`);
   }
 
-  async function handleResetUsername(uid: string) {
-    await update(ref(db, `users/${uid}`), { usernameChangesLeft: 3 });
-    setUsers(u => u.map(x => x.uid === uid ? { ...x, usernameChangesLeft: 3 } : x));
-    if (selected?.uid === uid) setSelected((s: any) => ({ ...s, usernameChangesLeft: 3 }));
-    flash("Username changes reset to 3");
+  async function handleSetUsername(uid: string) {
+    const val = editUsername.trim();
+    if (!val || val.length < 2 || val.length > 15 || !/^[a-zA-Z0-9_]+$/.test(val)) {
+      flash("Invalid username", "error"); return;
+    }
+    const oldUsername = selected?.username;
+    const updates: any = {};
+    updates[`users/${uid}/username`] = val;
+    updates[`users/${uid}/displayName`] = val;
+    if (oldUsername) updates[`usernames/${oldUsername.toLowerCase()}`] = null;
+    updates[`usernames/${val.toLowerCase()}`] = uid;
+    await update(ref(db), updates);
+    setUsers(u => u.map(x => x.uid === uid ? { ...x, username: val } : x));
+    setSelected((s: any) => ({ ...s, username: val }));
+    flash(`Username changed to ${val}`);
+    setEditUsername("");
+  }
+
+  async function handleSetStreak(uid: string) {
+    const val = parseInt(editStreak);
+    if (isNaN(val) || val < 0) { flash("Invalid streak", "error"); return; }
+    await update(ref(db, `users/${uid}`), { bestStreak: val });
+    setUsers(u => u.map(x => x.uid === uid ? { ...x, bestStreak: val } : x));
+    setSelected((s: any) => ({ ...s, bestStreak: val }));
+    flash(`Best streak set to ${val}`);
+    setEditStreak("");
+  }
+
+  async function handleSetChangesLeft(uid: string) {
+    const val = parseInt(editChangesLeft);
+    if (isNaN(val) || val < 0) { flash("Invalid number", "error"); return; }
+    await update(ref(db, `users/${uid}`), { usernameChangesLeft: val });
+    setUsers(u => u.map(x => x.uid === uid ? { ...x, usernameChangesLeft: val } : x));
+    setSelected((s: any) => ({ ...s, usernameChangesLeft: val }));
+    flash(`Username changes left set to ${val}`);
+    setEditChangesLeft("");
+  }
+
+  async function handleSetGamesPlayed(uid: string) {
+    const val = parseInt(editGamesPlayed);
+    if (isNaN(val) || val < 0) { flash("Invalid number", "error"); return; }
+    await update(ref(db, `users/${uid}`), { gamesPlayed: val });
+    setUsers(u => u.map(x => x.uid === uid ? { ...x, gamesPlayed: val } : x));
+    setSelected((s: any) => ({ ...s, gamesPlayed: val }));
+    flash(`Games played set to ${val}`);
+    setEditGamesPlayed("");
   }
 
   async function handleEditScore(uid: string) {
@@ -184,19 +227,24 @@ function UsersPanel() {
               ))}
             </div>
 
-            <div style={{ marginBottom:12 }}>
-              <label style={s.label}>Override best score</label>
-              <div style={{ display:"flex", gap:8 }}>
-                <input value={editScore} onChange={e => setEditScore(e.target.value.replace(/\D/g,""))}
-                  placeholder="New score" style={{ ...s.input, marginBottom:0, flex:1 }} />
-                <button onClick={() => handleEditScore(selected.uid)} style={s.btn("#6366f1")}>Set</button>
+            {[
+              { label:"Username", value:editUsername, set:setEditUsername, onSave:() => handleSetUsername(selected.uid), placeholder:"New username", color:"#10b981", alpha:false },
+              { label:"Best score", value:editScore, set:setEditScore, onSave:() => handleEditScore(selected.uid), placeholder:"New score", color:"#6366f1", alpha:false },
+              { label:"Best streak", value:editStreak, set:setEditStreak, onSave:() => handleSetStreak(selected.uid), placeholder:"New streak", color:"#ef4444", alpha:false },
+              { label:"Username changes left", value:editChangesLeft, set:setEditChangesLeft, onSave:() => handleSetChangesLeft(selected.uid), placeholder:"e.g. 0, 3, 99", color:"#f59e0b", alpha:false },
+              { label:"Games played", value:editGamesPlayed, set:setEditGamesPlayed, onSave:() => handleSetGamesPlayed(selected.uid), placeholder:"New count", color:"#6366f1", alpha:false },
+            ].map(({ label, value, set, onSave, placeholder, color, alpha }) => (
+              <div key={label} style={{ marginBottom:10 }}>
+                <label style={s.label}>{label}</label>
+                <div style={{ display:"flex", gap:8 }}>
+                  <input value={value} onChange={e => set(e.target.value)}
+                    placeholder={placeholder} style={{ ...s.input, marginBottom:0, flex:1 }} />
+                  <button onClick={onSave} style={s.btn(color)}>Set</button>
+                </div>
               </div>
-            </div>
+            ))}
 
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              <button onClick={() => handleResetUsername(selected.uid)} style={s.btn("#10b981")}>
-                Reset username changes → 3
-              </button>
+            <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:4 }}>
               <button onClick={() => handleDeleteLB(selected.uid, selected.username)} style={s.btn("#ef4444")}>
                 Delete leaderboard entries
               </button>
