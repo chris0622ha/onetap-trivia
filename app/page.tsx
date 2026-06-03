@@ -900,7 +900,7 @@ export default function Home() {
         <button onClick={() => setModal(null)} style={{ position:"absolute", top:14, right:16, background:"transparent", border:"none", color:"#6b7280", fontSize:20, cursor:"pointer", lineHeight:1 }}>×</button>
         {type === "about" && (<>
           <div style={{ fontSize:"1.4rem", fontWeight:900, marginBottom:16 }}>⚡ About</div>
-          <p style={{ color:"#d1d5db", lineHeight:1.7, marginBottom:12 }}><strong style={{ color:"#f59e0b" }}>QuicTriv</strong> is a fast-paced trivia game. 3 seconds. One tap. No mercy.</p>
+          <p style={{ color:"#d1d5db", lineHeight:1.7, marginBottom:12 }}><strong style={{ color:"#f59e0b" }}>TrivQuic</strong> is a fast-paced trivia game. Fast trivia. No mercy.</p>
           <p style={{ color:"#d1d5db", lineHeight:1.7, marginBottom:20 }}>Play solo across 6 categories or go head-to-head in real-time multiplayer.</p>
           <div style={{ borderTop:"1px solid #2d2d44", paddingTop:16, fontSize:13, color:"#4b5563", lineHeight:1.8 }}>
             <div>By: Chris</div><div>Made in: 2026</div>
@@ -1134,8 +1134,8 @@ export default function Home() {
 
       <div style={{ textAlign:"center", marginBottom:28 }}>
         <div style={{ fontSize:56, marginBottom:8 }}>⚡</div>
-        <h1 style={{ fontSize:"2.8rem", fontWeight:900, letterSpacing:"-0.03em", margin:0, background:"linear-gradient(135deg, #f59e0b, #ef4444)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>QuicTriv</h1>
-        <p style={{ color:"#6b7280", marginTop:8, fontSize:"1.1rem" }}>3 seconds. One tap. No mercy.</p>
+        <h1 style={{ fontSize:"2.8rem", fontWeight:900, letterSpacing:"-0.03em", margin:0, background:"linear-gradient(135deg, #f59e0b, #ef4444)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>TrivQuic</h1>
+        <p style={{ color:"#6b7280", marginTop:8, fontSize:"1.1rem" }}>Fast trivia. No mercy.</p>
       </div>
 
       <div style={{ width:"100%", maxWidth: isMobile ? 460 : 860, background:"#1a1a2e", borderRadius:16, padding:"16px 24px", marginBottom:16 }}>
