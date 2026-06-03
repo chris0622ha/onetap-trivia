@@ -384,6 +384,17 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
       fromPhotoURL: userData?.photoURL || user.photoURL || null,
       sentAt: Date.now(),
     });
+    // Push notification
+    try {
+      const tokenSnap = await get(ref(db, `users/${targetUid}/fcmToken`));
+      if (tokenSnap.exists()) {
+        await fetch("/api/send-notification", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: tokenSnap.val(), title: "👥 Friend Request", body: `${userData?.username || "Someone"} wants to be friends!`, url: "/" }),
+        });
+      }
+    } catch {}
     setFriendMsg("Request sent!");
     setFriendInput("");
     setTimeout(() => setFriendMsg(""), 2500);
@@ -884,6 +895,22 @@ function ChatModal({ myUid, myName, friend, onClose }: { myUid:string; myName:st
     // Bump unread for the other person
     const theirUnread = (await get(ref(db, `chats/${chatKey}/unread/${friend.uid}`))).val() || 0;
     await set(ref(db, `chats/${chatKey}/unread/${friend.uid}`), theirUnread + 1);
+    // Send push notification
+    try {
+      const tokenSnap = await get(ref(db, `users/${friend.uid}/fcmToken`));
+      const mutedSnap = await get(ref(db, `users/${friend.uid}/mutedUids`));
+      const muted: string[] = mutedSnap.exists() ? Object.values(mutedSnap.val()) : [];
+      const statusSnap = await get(ref(db, `users/${friend.uid}/status`));
+      const theirStatus = statusSnap.exists() ? statusSnap.val() : null;
+      const notifAllowed = !theirStatus || theirStatus.notif !== false;
+      if (tokenSnap.exists() && !muted.includes(myUid) && notifAllowed) {
+        await fetch("/api/send-notification", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: tokenSnap.val(), title: `💬 ${myName}`, body: msg, url: "/" }),
+        });
+      }
+    } catch {}
   }
 
   return (
@@ -1086,10 +1113,33 @@ export default function Home() {
           setName(data.username);
           try { localStorage.setItem("onetap_name", data.username); } catch {}
         }
-        // Request push notification permission
+        // Request push notification permission + get FCM token
         try {
           if ("Notification" in window && Notification.permission === "default") {
-            Notification.requestPermission();
+            await Notification.requestPermission();
+          }
+          if (Notification.permission === "granted" && "serviceWorker" in navigator) {
+            const reg = await navigator.serviceWorker.ready;
+            const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+            if (vapidKey) {
+              const { getMessaging, getToken, isSupported } = await import("firebase/messaging");
+              const supported = await isSupported();
+              if (supported) {
+                const { initializeApp, getApps } = await import("firebase/app");
+                const msgApp = getApps().find((a: any) => a.name === "msg") ?? (await import("firebase/app")).initializeApp({
+                  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "placeholder",
+                  authDomain: "onetap-trivia.firebaseapp.com",
+                  databaseURL: "https://onetap-trivia-default-rtdb.firebaseio.com",
+                  projectId: "onetap-trivia",
+                  storageBucket: "onetap-trivia.firebasestorage.app",
+                  messagingSenderId: "986046986694",
+                  appId: "1:986046986694:web:2a4441bf46965ccbb3dac7",
+                }, "msg");
+                const messaging = getMessaging(msgApp);
+                const fcmToken = await getToken(messaging, { vapidKey, serviceWorkerRegistration: reg });
+                if (fcmToken) await update(ref(db, `users/${u.uid}`), { fcmToken });
+              }
+            }
           }
         } catch {}
         // Log login
@@ -1187,6 +1237,20 @@ export default function Home() {
     if (!("Notification" in window) || Notification.permission !== "granted") return;
     try {
       new Notification(title, { body, icon: "/favicon.ico", data: { url } });
+    } catch {}
+  }
+
+  // Send push to another user via their FCM token
+  async function sendPushToUser(targetUid: string, title: string, body: string, url = "/") {
+    try {
+      const snap = await get(ref(db, `users/${targetUid}/fcmToken`));
+      if (!snap.exists()) return;
+      const token = snap.val();
+      await fetch("/api/send-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, title, body, url }),
+      });
     } catch {}
   }
 
