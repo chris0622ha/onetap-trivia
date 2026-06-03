@@ -166,7 +166,7 @@ export default function Home() {
       const newTotal = curTotal + 1;
       const newBest = Math.max(newStreak, curBest);
       // Update ref immediately so next call sees latest values
-      gameStateRef.current = { streak: newStreak, bestStreak: newBest, score: newScore, correct: newCorrect, total: newTotal, category: curCat };
+      gameStateRef.current = { streak: newStreak, bestStreak: newBest, score: newScore, correct: newCorrect, total: newTotal, category: curCat, timerDuration: gameStateRef.current.timerDuration };
       setStreak(newStreak);
       setAnim(isCorrect ? "pop" : "shake");
       if (isCorrect && newStreak > 1) {
