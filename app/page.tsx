@@ -1,8 +1,10 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef, useCallback } from "react";
-import { db } from "./lib/firebase";
-import { ref, get, set, update, push, onValue, off } from "firebase/database";
+import { db, auth, googleProvider } from "./lib/firebase";
+import { ref, get, set, update, onValue, off } from "firebase/database";
+import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import type { User } from "firebase/auth";
 
 import { geography } from "./data/geography";
 import { science } from "./data/science";
@@ -66,6 +68,8 @@ export default function Home() {
   const [name, setName] = useState("");
   const [anim, setAnim] = useState("");
   const [globalLB, setGlobalLB] = useState<any[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   // Settings
   const [category, setCategory] = useState("all");
@@ -89,6 +93,20 @@ export default function Home() {
     } catch {}
   }, []);
 
+  // Auth state listener
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthLoading(false);
+      if (u && !name) {
+        const displayName = u.displayName?.split(" ")[0] || u.email?.split("@")[0] || "";
+        setName(displayName);
+        try { localStorage.setItem("onetap_name", displayName); } catch {}
+      }
+    });
+    return () => unsub();
+  }, []);
+
   // Subscribe to global leaderboard
   useEffect(() => {
     const lbRef = ref(db, "leaderboard");
@@ -104,7 +122,8 @@ export default function Home() {
     (finalScore: number, finalBest: number, finalCorrect: number, finalTotal: number, finalCat: string) => {
       if (timerRef.current) clearInterval(timerRef.current);
       resultsRef.current = { score: finalScore, correct: finalCorrect, total: finalTotal, bestStreak: finalBest, category: finalCat };
-      saveToGlobalLB(name || "Anonymous", finalScore, finalBest, finalCat);
+      const lbName = user?.displayName?.split(" ")[0] || user?.email?.split("@")[0] || name || "Anonymous";
+      saveToGlobalLB(lbName, finalScore, finalBest, finalCat);
       setScore(finalScore);
       setCorrect(finalCorrect);
       setTotal(finalTotal);
@@ -191,6 +210,44 @@ export default function Home() {
   const pct = (qIndex / (questions.length || 1)) * 100;
   const medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
 
+  // ── AUTH HEADER ─────────────────────────────────────────────────────────
+  const AuthHeader = () => (
+    <div style={{ position: "fixed", top: 0, right: 0, padding: "12px 16px", zIndex: 200, display: "flex", alignItems: "center", gap: 10 }}>
+      {authLoading ? null : user ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {user.photoURL && (
+            <img src={user.photoURL} alt="" width={30} height={30}
+              style={{ borderRadius: "50%", border: "2px solid #f59e0b" }} />
+          )}
+          <span style={{ color: "#e5e7eb", fontSize: 13, fontWeight: 600, maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {user.displayName?.split(" ")[0] || user.email?.split("@")[0]}
+          </span>
+          <button
+            onClick={() => signOut(auth)}
+            style={{ background: "rgba(255,255,255,0.07)", border: "1px solid #2d2d44", borderRadius: 8, color: "#9ca3af", fontSize: 12, fontWeight: 600, padding: "5px 12px", cursor: "pointer" }}
+          >
+            Sign out
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={async () => {
+            try { await signInWithPopup(auth, googleProvider); } catch {}
+          }}
+          style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "none", borderRadius: 8, color: "#1f2937", fontSize: 13, fontWeight: 700, padding: "8px 14px", cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }}
+        >
+          <svg width="16" height="16" viewBox="0 0 48 48">
+            <path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.7 29.3 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.3-.1-2.7-.4-4z"/>
+            <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.1 8.1 2.9l6-6C34.5 5.1 29.5 3 24 3 16.3 3 9.7 7.9 6.3 14.7z"/>
+            <path fill="#4CAF50" d="M24 45c5.3 0 10.2-1.9 13.9-5.1l-6.4-5.4C29.6 36.1 26.9 37 24 37c-5.2 0-9.6-3.3-11.3-8H6.2C9.5 38.9 16.2 45 24 45z"/>
+            <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.6l6.4 5.4C41.2 35.3 44 30 44 24c0-1.3-.1-2.7-.4-4z"/>
+          </svg>
+          Log in / Sign up
+        </button>
+      )}
+    </div>
+  );
+
   // ── LEADERBOARD WIDGET ───────────────────────────────────────────────────
   const LeaderboardView = () =>
     globalLB.length > 0 ? (
@@ -219,6 +276,7 @@ export default function Home() {
   // ── HOME ─────────────────────────────────────────────────────────────────
   if (screen === "home") return (
     <div style={{ minHeight: "100vh", background: "#0f0f1a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px", color: "#fff" }}>
+      <AuthHeader />
       <div style={{ textAlign: "center", marginBottom: 28 }}>
         <div style={{ fontSize: 56, marginBottom: 8 }}>⚡</div>
         <h1 style={{ fontSize: "2.8rem", fontWeight: 900, letterSpacing: "-0.03em", margin: 0, background: "linear-gradient(135deg, #f59e0b, #ef4444)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
@@ -347,6 +405,7 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0f0f1a", display: "flex", flexDirection: "column", alignItems: "center", padding: "20px", color: "#fff" }}>
+      <AuthHeader />
       <div style={{ width: "100%", maxWidth: 480, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div style={{ fontSize: 22, fontWeight: 900, color: "#f59e0b" }}>{score}</div>
         <div style={{ fontSize: 13, color: "#6b7280" }}>{qIndex + 1} / {questions.length}</div>
@@ -415,4 +474,5 @@ export default function Home() {
     </div>
   );
 }
+
 
