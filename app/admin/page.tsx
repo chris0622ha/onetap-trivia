@@ -102,9 +102,12 @@ function StatsPanel() {
       const catCounts: Record<string,number> = {};
       lb.forEach(e => { if(e.category) catCounts[e.category] = (catCounts[e.category]||0)+1; });
       const topCat = Object.entries(catCounts).sort(([,a],[,b])=>b-a)[0]?.[0] ?? "—";
+      const totalDuels = users.reduce((s,u) => s+(u.duelsPlayed||0), 0);
+      const totalDuelWins = users.reduce((s,u) => s+(u.duelWins||0), 0);
 
       setStats({ totalUsers:users.length, totalGames, totalCorrect, totalQuestions,
-        playedToday, topScore, topCat, activeBans:bans.length, lbEntries:lb.length });
+        playedToday, topScore, topCat, activeBans:bans.length, lbEntries:lb.length,
+        totalDuels, totalDuelWins });
       setLoading(false);
     });
   }, []);
@@ -132,6 +135,8 @@ function StatsPanel() {
         <Stat label="Active Bans" value={stats.activeBans} color="#ef4444" />
         <Stat label="Accuracy" value={`${acc}%`} color="#10b981" sub={`${stats.totalCorrect.toLocaleString()} / ${stats.totalQuestions.toLocaleString()}`} />
         <Stat label="Top Category" value={CAT_EMOJI[stats.topCat]||"—"} color="#f59e0b" sub={stats.topCat} />
+        <Stat label="Total Duels" value={stats.totalDuels||0} color="#6366f1" />
+        <Stat label="Duel Wins" value={stats.totalDuelWins||0} color="#a855f7" />
       </div>
     </div>
   );
@@ -328,6 +333,47 @@ function QuestionsPanel() {
   );
 }
 
+// ── LOGIN HISTORY ─────────────────────────────────────────────────────────────
+function LoginHistory({ uid }: { uid: string }) {
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    get(ref(db, `users/${uid}/loginHistory`)).then(snap => {
+      if (!snap.exists()) { setHistory([]); setLoading(false); return; }
+      const list = Object.values(snap.val() as any).sort((a:any,b:any) => b.ts - a.ts);
+      setHistory(list as any[]);
+      setLoading(false);
+    });
+  }, [uid, open]);
+
+  return (
+    <div style={{ marginTop:10 }}>
+      <button onClick={()=>setOpen(o=>!o)} style={{ ...btn(), width:"100%", justifyContent:"space-between", display:"flex" }}>
+        <span>🕐 Login History</span><span>{open?"▲":"▼"}</span>
+      </button>
+      {open && (
+        <div style={{ background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:8, marginTop:6, maxHeight:200, overflowY:"auto" as const }}>
+          {loading ? <div style={{ padding:12, color:"#6b7280", fontSize:13 }}>Loading…</div> :
+            history.length === 0 ? <div style={{ padding:12, color:"#4b5563", fontSize:13 }}>No login history yet</div> :
+            history.map((h:any, i) => (
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"8px 12px", borderBottom:"1px solid #1e1e30", fontSize:12 }}>
+                <span style={{ color:"#d1d5db" }}>{h.loginAt}</span>
+                <span style={{ color: h.durationMin != null ? "#10b981" : "#4b5563" }}>
+                  {h.durationMin != null ? `${h.durationMin}m` : "active/unknown"}
+                </span>
+              </div>
+            ))
+          }
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── USERS PANEL ───────────────────────────────────────────────────────────────
 function UsersPanel() {
   const [users, setUsers] = useState<any[]>([]);
@@ -449,6 +495,9 @@ function UsersPanel() {
                   <div style={{ minWidth:0 }}>
                     <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
                       {u.username}
+                      {u.badge === "star"  && <span style={{ marginLeft:4 }}>⭐</span>}
+                      {u.badge === "check" && <span style={{ marginLeft:4, color:"#3b82f6", fontWeight:900 }}>✓</span>}
+                      {u.badge === "crown" && <span style={{ marginLeft:4 }}>👑</span>}
                       {u.isAdmin && <span style={{ marginLeft:6, ...tag("245,158,11") }}>admin</span>}
                       {u.banned && <span style={{ marginLeft:6, ...tag("239,68,68") }}>banned</span>}
                     </div>
@@ -492,7 +541,38 @@ function UsersPanel() {
             <EditRow label="Username changes left" value={editChangesLeft} onChange={setEditChangesLeft} onSave={()=>handleSetChanges(selected.uid)} placeholder="e.g. 0, 3, 99" color="y" />
             <EditRow label="Games played" value={editGames} onChange={setEditGames} onSave={()=>handleSetGames(selected.uid)} placeholder="New count" color="b" />
 
-            <div style={{ display:"flex", flexDirection:"column" as const, gap:8, marginTop:4, paddingTop:12, borderTop:"1px solid #2d2d44" }}>
+            {/* Badge assignment */}
+            <div style={{ marginTop:12, paddingTop:12, borderTop:"1px solid #2d2d44" }}>
+              <label style={c.label}>Reward Badge</label>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const, marginBottom:10 }}>
+                {[["none","None","#6b7280"],["star","⭐ Star","#f59e0b"],["check","✓ Verified","#3b82f6"],["crown","👑 Crown","#a855f7"]].map(([val,label,col])=>(
+                  <button key={val} onClick={async()=>{
+                    const badgeVal = val==="none" ? null : val;
+                    await update(ref(db,`users/${selected.uid}`),{badge:badgeVal});
+                    // Also update leaderboard entries so badge shows there
+                    const lbSnap = await get(ref(db,"leaderboard"));
+                    if (lbSnap.exists()) {
+                      const updates: any = {};
+                      Object.keys(lbSnap.val()).forEach(k => {
+                        if (k.startsWith(selected.uid+"_") || lbSnap.val()[k]?.uid===selected.uid) {
+                          updates[`leaderboard/${k}/badge`] = badgeVal;
+                        }
+                      });
+                      if (Object.keys(updates).length) await update(ref(db), updates);
+                    }
+                    patchUser(selected.uid,{badge:badgeVal});
+                    flash(`Badge ${val==="none"?"removed":`set to ${label}`}`);
+                  }} style={{ ...btn(), borderColor:selected.badge===(val==="none"?null:val)?col+"88":"#2d2d4488", color:selected.badge===(val==="none"?null:val)?col:"#6b7280", background:selected.badge===(val==="none"?null:val)?`${col}22`:"transparent" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Login history */}
+            <LoginHistory uid={selected.uid} />
+
+            <div style={{ display:"flex", flexDirection:"column" as const, gap:8, marginTop:12, paddingTop:12, borderTop:"1px solid #2d2d44" }}>
               <button onClick={()=>handleWipeStats(selected.uid)} style={btn("r",true)}>⚠️ Wipe all stats</button>
               <button onClick={()=>handleDeleteLB(selected.uid)} style={btn("r",true)}>Delete leaderboard entries</button>
               <button onClick={()=>handleToggleAdmin(selected.uid,selected.isAdmin)} style={btn(selected.isAdmin?"r":"y",true)}>
@@ -777,8 +857,64 @@ const NAV = [
   { id:"users",         icon:"👥", label:"Users" },
   { id:"leaderboard",   icon:"🏆", label:"Leaderboard" },
   { id:"reports",       icon:"🚩", label:"Reports" },
+  { id:"duels",         icon:"⚔️", label:"Duels" },
   { id:"bans",          icon:"🔨", label:"Bans" },
 ];
+
+// ── DUELS ADMIN PANEL ────────────────────────────────────────────────────────
+function DuelsAdminPanel() {
+  const [duels, setDuels] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { msg, flash } = useFlash();
+
+  useEffect(() => {
+    get(ref(db, "duels")).then(snap => {
+      if (!snap.exists()) { setLoading(false); return; }
+      const list = Object.values(snap.val() as any).sort((a:any,b:any) => b.createdAt - a.createdAt);
+      setDuels(list as any[]);
+      setLoading(false);
+    });
+  }, []);
+
+  async function deleteDuel(id: string) {
+    await remove(ref(db, `duels/${id}`));
+    setDuels(d => d.filter((x:any) => x.id !== id));
+    flash("Duel deleted");
+  }
+
+  return (
+    <div>
+      <h1 style={c.h1}>⚔️ Duels ({duels.length})</h1>
+      <Flash msg={msg} />
+      <div style={c.card}>
+        {loading ? <div style={{ color:"#6b7280" }}>Loading…</div> :
+          duels.length === 0 ? <div style={{ color:"#4b5563" }}>No duels played yet</div> :
+          duels.map((d:any, i) => {
+            const p1Win = d.p1Score > d.p2Score;
+            const p2Win = d.p2Score > d.p1Score;
+            const draw = d.p1Score === d.p2Score;
+            return (
+              <div key={i} style={c.row}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontWeight:700, fontSize:14, display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={{ color: p1Win?"#f59e0b":"#9ca3af" }}>{d.p1?.name}</span>
+                    <span style={{ color:"#f59e0b", fontWeight:900 }}>{d.p1Score}</span>
+                    <span style={{ color:"#4b5563" }}>vs</span>
+                    <span style={{ color:"#a855f7", fontWeight:900 }}>{d.p2Score}</span>
+                    <span style={{ color: p2Win?"#a855f7":"#9ca3af" }}>{d.p2?.name}</span>
+                    {draw && <span style={{ color:"#6b7280", fontSize:11 }}>draw</span>}
+                  </div>
+                  <div style={{ fontSize:11, color:"#4b5563" }}>{new Date(d.createdAt).toLocaleString()}</div>
+                </div>
+                <button onClick={() => deleteDuel(d.id)} style={btn("r")}>Delete</button>
+              </div>
+            );
+          })
+        }
+      </div>
+    </div>
+  );
+}
 
 // ── ROOT ──────────────────────────────────────────────────────────────────────
 export default function AdminPage() {
@@ -866,6 +1002,7 @@ export default function AdminPage() {
         {tab==="users"         && <UsersPanel />}
         {tab==="leaderboard"   && <LeaderboardPanel />}
         {tab==="reports"       && <ReportsPanel />}
+        {tab==="duels"         && <DuelsAdminPanel />}
         {tab==="bans"          && <BansPanel initUid={initBanUid} />}
       </div>
     </div>
