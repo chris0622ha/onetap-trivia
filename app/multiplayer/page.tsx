@@ -261,7 +261,7 @@ export default function MultiplayerPage() {
   if (view === "home") return (
     <div style={s.page}>
       <div style={{ ...s.card }}>
-        <div style={s.title}>⚡ One-Tap Trivia</div>
+        <div style={s.title}>⚡ QuicTriv</div>
         <div style={s.sub}>Multiplayer Mode</div>
         {error && <div style={{ background:"rgba(239,68,68,0.15)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:8, padding:"10px 14px", color:"#f87171", fontSize:13, marginBottom:14 }}>{error}</div>}
 
