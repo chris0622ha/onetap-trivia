@@ -266,13 +266,17 @@ export default function MultiplayerPage() {
         {error && <div style={{ background:"rgba(239,68,68,0.15)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:8, padding:"10px 14px", color:"#f87171", fontSize:13, marginBottom:14 }}>{error}</div>}
 
         <label style={s.label}>Your Name (max 15 chars)</label>
-        <input style={s.input} value={playerName} maxLength={15} onChange={e => { setPlayerName(e.target.value); try { localStorage.setItem("onetap_name", e.target.value); } catch {} }} placeholder="Enter your name…" />
+        <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+          <input style={{ ...s.input, marginBottom:0, flex:1 }} value={playerName} maxLength={15} onChange={e => { setPlayerName(e.target.value); try { localStorage.setItem("onetap_name", e.target.value); } catch {} }} placeholder="Enter your name…" />
+          <button onClick={() => { const n = FUNNY_NAMES[Math.floor(Math.random()*FUNNY_NAMES.length)]; setPlayerName(n); try { localStorage.setItem("onetap_name", n); } catch {}; }}
+            style={{ background:"rgba(245,158,11,0.15)", border:"1px solid rgba(245,158,11,0.4)", borderRadius:10, color:"#f59e0b", fontSize:"1.2rem", padding:"0 14px", cursor:"pointer", flexShrink:0 }} title="Generate random name">🎲</button>
+        </div>
 
         <button style={s.btn()} onClick={() => { setError(""); setView("host-setup"); }}>🎮 Host a Game</button>
 
         <div style={{ margin:"16px 0 10px", borderTop:"1px solid #2d2d44", paddingTop:16 }}>
           <label style={s.label}>Join with Game Code</label>
-          <input style={{ ...s.input, textTransform:"uppercase", letterSpacing:"0.2em", fontSize:18, fontWeight:700 }}
+          <input style={{ ...s.input, textTransform:"uppercase", letterSpacing:"0.3em", fontSize:20, fontWeight:700, textAlign:"center" }}
             value={joinCode} maxLength={6} onChange={e => setJoinCode(e.target.value.toUpperCase())} placeholder="ABC123" />
           <button style={s.btn("#10b981")} onClick={joinGame}>🚀 Join Game</button>
         </div>
@@ -287,6 +291,13 @@ export default function MultiplayerPage() {
       <div style={s.card}>
         <div style={{ ...s.title, fontSize:"1.5rem", marginBottom:20 }}>🎮 Host Settings</div>
         {error && <div style={{ background:"rgba(239,68,68,0.15)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:8, padding:"10px 14px", color:"#f87171", fontSize:13, marginBottom:14 }}>{error}</div>}
+
+        <label style={s.label}>Your Name</label>
+        <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+          <input style={{ ...s.input, marginBottom:0, flex:1 }} value={playerName} maxLength={15} onChange={e => setPlayerName(e.target.value)} placeholder="Enter your name…" />
+          <button onClick={() => { const n = FUNNY_NAMES[Math.floor(Math.random()*FUNNY_NAMES.length)]; setPlayerName(n); }}
+            style={{ background:"rgba(245,158,11,0.15)", border:"1px solid rgba(245,158,11,0.4)", borderRadius:10, color:"#f59e0b", fontSize:"1.2rem", padding:"0 14px", cursor:"pointer", flexShrink:0 }} title="Generate random name">🎲</button>
+        </div>
 
         <label style={s.label}>Category</label>
         <select value={category} onChange={e => setCategory(e.target.value)}
