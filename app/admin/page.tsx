@@ -1,51 +1,331 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db, auth, googleProvider } from "../lib/firebase";
-import {
-  ref, get, set, update, remove, onValue, off
-} from "firebase/database";
+import { ref, get, set, update, remove, onValue, off, push } from "firebase/database";
 import { signInWithPopup, onAuthStateChanged } from "firebase/auth";
 import type { User } from "firebase/auth";
 
-const s = {
-  page: { minHeight:"100vh", background:"#0a0a14", color:"#fff", fontFamily:"system-ui,sans-serif", padding:"0" },
-  sidebar: { width:200, background:"#0f0f1a", borderRight:"1px solid #1e1e30", minHeight:"100vh", padding:"20px 0", flexShrink:0 } as React.CSSProperties,
-  main: { flex:1, padding:"28px 32px", overflowY:"auto" as const },
-  card: { background:"#1a1a2e", border:"1px solid #2d2d44", borderRadius:14, padding:"20px 24px", marginBottom:20 },
-  h2: { fontSize:"1.1rem", fontWeight:800, marginBottom:16, color:"#fff" },
-  label: { fontSize:11, color:"#6b7280", textTransform:"uppercase" as const, letterSpacing:"0.06em", marginBottom:6, display:"block" },
-  input: { width:"100%", background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:8, color:"#fff", fontSize:14, padding:"9px 12px", outline:"none", boxSizing:"border-box" as const, marginBottom:10 },
-  btn: (color = "#f59e0b") => ({ background:`rgba(${color === "#ef4444" ? "239,68,68" : color === "#10b981" ? "16,185,129" : color === "#6366f1" ? "99,102,241" : "245,158,11"},0.15)`, border:`1px solid ${color}44`, borderRadius:8, color, fontSize:13, fontWeight:700, padding:"8px 16px", cursor:"pointer" }),
-  danger: { background:"rgba(239,68,68,0.15)", border:"1px solid #ef444444", borderRadius:8, color:"#ef4444", fontSize:12, fontWeight:700, padding:"6px 12px", cursor:"pointer" },
-  success: { background:"rgba(16,185,129,0.15)", border:"1px solid #10b98144", borderRadius:8, color:"#10b981", fontSize:12, fontWeight:700, padding:"6px 12px", cursor:"pointer" },
-  row: { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 0", borderBottom:"1px solid #1e1e30" } as React.CSSProperties,
-  tag: (c: string) => ({ background:`rgba(${c},0.15)`, border:`1px solid rgba(${c},0.3)`, borderRadius:99, color:`rgb(${c})`, fontSize:11, fontWeight:700, padding:"2px 8px" }),
-  notice: (c: string) => ({ background:`rgba(${c},0.1)`, border:`1px solid rgba(${c},0.3)`, borderRadius:10, padding:"10px 14px", marginBottom:14, fontSize:13, color:`rgb(${c})` }),
+// ── Styles ────────────────────────────────────────────────────────────────────
+const c = {
+  page:    { minHeight:"100vh", background:"#0a0a14", color:"#fff", fontFamily:"system-ui,sans-serif" } as React.CSSProperties,
+  sidebar: { width:220, background:"#0f0f1a", borderRight:"1px solid #1e1e30", minHeight:"100vh", padding:"0", flexShrink:0, display:"flex", flexDirection:"column" as const } as React.CSSProperties,
+  main:    { flex:1, padding:"28px 32px", overflowY:"auto" as const, maxWidth:"calc(100vw - 220px)" } as React.CSSProperties,
+  card:    { background:"#1a1a2e", border:"1px solid #2d2d44", borderRadius:14, padding:"20px 24px", marginBottom:20 } as React.CSSProperties,
+  h1:      { fontSize:"1.4rem", fontWeight:900, marginBottom:20, margin:"0 0 20px" } as React.CSSProperties,
+  h2:      { fontSize:"1rem", fontWeight:800, marginBottom:14, color:"#fff" } as React.CSSProperties,
+  label:   { fontSize:11, color:"#6b7280", textTransform:"uppercase" as const, letterSpacing:"0.06em", marginBottom:6, display:"block" },
+  input:   { width:"100%", background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:8, color:"#fff", fontSize:14, padding:"9px 12px", outline:"none", boxSizing:"border-box" as const, marginBottom:10 },
+  textarea:{ width:"100%", background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:8, color:"#fff", fontSize:14, padding:"9px 12px", outline:"none", boxSizing:"border-box" as const, marginBottom:10, resize:"vertical" as const, minHeight:80 },
+  row:     { display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderBottom:"1px solid #1e1e30", flexWrap:"wrap" as const } as React.CSSProperties,
+  grid2:   { display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 } as React.CSSProperties,
+  grid4:   { display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10 } as React.CSSProperties,
 };
 
-const NAV_ITEMS = [
-  { id:"users",     label:"Users",          icon:"👥" },
-  { id:"leaderboard", label:"Leaderboard",  icon:"🏆" },
-  { id:"bans",      label:"Bans",           icon:"🔨" },
-];
+const btn = (color = "#f59e0b", full = false) => ({
+  background:`rgba(${color==="r"?"239,68,68":color==="g"?"16,185,129":color==="b"?"99,102,241":color==="y"?"245,158,11":"107,114,128"},0.15)`,
+  border:`1px solid ${color==="r"?"#ef4444":color==="g"?"#10b981":color==="b"?"#6366f1":color==="y"?"#f59e0b":"#6b7280"}44`,
+  borderRadius:8, color:color==="r"?"#ef4444":color==="g"?"#10b981":color==="b"?"#6366f1":color==="y"?"#f59e0b":"#9ca3af",
+  fontSize:13, fontWeight:700, padding:"8px 14px", cursor:"pointer",
+  width: full ? "100%" : "auto",
+} as React.CSSProperties);
 
-function Avatar({ src, name, size = 32 }: { src?: string|null; name: string; size?: number }) {
+const tag = (col: string) => ({
+  background:`rgba(${col},0.15)`, border:`1px solid rgba(${col},0.3)`,
+  borderRadius:99, color:`rgb(${col})`, fontSize:11, fontWeight:700, padding:"2px 8px",
+} as React.CSSProperties);
+
+const CATEGORIES = ["geography","science","history","math","sports","entertainment"];
+const CAT_EMOJI: Record<string,string> = { geography:"🗺️", science:"🔬", history:"📜", math:"🔢", sports:"⚽", entertainment:"🎬" };
+
+function Avatar({ src, name, size=32 }: { src?:string|null; name:string; size?:number }) {
   return src ? (
-    <img src={src} alt="" width={size} height={size}
-      style={{ borderRadius:"50%", border:"2px solid #2d2d44", flexShrink:0, display:"block" }} />
+    <img src={src} alt="" width={size} height={size} style={{ borderRadius:"50%", border:"2px solid #2d2d44", flexShrink:0, display:"block", objectFit:"cover" }} />
   ) : (
-    <div style={{ width:size, height:size, borderRadius:"50%", background:"rgba(245,158,11,0.2)",
-      border:"2px solid #2d2d44", display:"flex", alignItems:"center", justifyContent:"center",
-      fontSize:size * 0.4, fontWeight:900, color:"#f59e0b", flexShrink:0 }}>
-      {(name || "?")[0].toUpperCase()}
+    <div style={{ width:size, height:size, borderRadius:"50%", background:"rgba(245,158,11,0.2)", border:"2px solid #2d2d44", display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.4, fontWeight:900, color:"#f59e0b", flexShrink:0 }}>
+      {(name||"?")[0].toUpperCase()}
     </div>
   );
 }
 
-function Msg({ text, type }: { text: string; type: "success"|"error"|"info" }) {
-  const c = type === "success" ? "16,185,129" : type === "error" ? "239,68,68" : "99,102,241";
-  return <div style={s.notice(c)}>{text}</div>;
+function Flash({ msg }: { msg:{text:string;type:"success"|"error"|"info"}|null }) {
+  if (!msg) return null;
+  const col = msg.type==="success"?"16,185,129":msg.type==="error"?"239,68,68":"99,102,241";
+  return <div style={{ background:`rgba(${col},0.1)`, border:`1px solid rgba(${col},0.3)`, borderRadius:10, padding:"10px 14px", marginBottom:14, fontSize:13, color:`rgb(${col})` }}>{msg.text}</div>;
+}
+
+function useFlash() {
+  const [msg, setMsg] = useState<{text:string;type:"success"|"error"|"info"}|null>(null);
+  const flash = (text: string, type:"success"|"error"|"info"="success") => {
+    setMsg({ text, type }); setTimeout(() => setMsg(null), 3000);
+  };
+  return { msg, flash };
+}
+
+function EditRow({ label, value, onChange, onSave, placeholder, color="b" }: {
+  label:string; value:string; onChange:(v:string)=>void; onSave:()=>void; placeholder:string; color?:string;
+}) {
+  return (
+    <div style={{ marginBottom:12 }}>
+      <label style={c.label}>{label}</label>
+      <div style={{ display:"flex", gap:8 }}>
+        <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+          onKeyDown={e=>e.key==="Enter"&&onSave()}
+          style={{ ...c.input, marginBottom:0, flex:1 }} />
+        <button onClick={onSave} style={btn(color)}>Set</button>
+      </div>
+    </div>
+  );
+}
+
+// ── STATS DASHBOARD ───────────────────────────────────────────────────────────
+function StatsPanel() {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      get(ref(db, "users")),
+      get(ref(db, "leaderboard")),
+      get(ref(db, "bans")),
+    ]).then(([uSnap, lbSnap, banSnap]) => {
+      const users: any[] = uSnap.exists() ? Object.values(uSnap.val()) : [];
+      const lb: any[] = lbSnap.exists() ? Object.values(lbSnap.val()) : [];
+      const bans: any[] = banSnap.exists() ? Object.values(banSnap.val()) : [];
+
+      const today = new Date().toLocaleDateString();
+      const totalGames = users.reduce((s,u) => s+(u.gamesPlayed||0), 0);
+      const totalCorrect = users.reduce((s,u) => s+(u.totalCorrect||0), 0);
+      const totalQuestions = users.reduce((s,u) => s+(u.totalQuestions||0), 0);
+      const playedToday = users.filter(u => u.lastPlayed === today).length;
+      const topScore = lb.length ? Math.max(...lb.map(e=>e.score||0)) : 0;
+      const catCounts: Record<string,number> = {};
+      lb.forEach(e => { if(e.category) catCounts[e.category] = (catCounts[e.category]||0)+1; });
+      const topCat = Object.entries(catCounts).sort(([,a],[,b])=>b-a)[0]?.[0] ?? "—";
+
+      setStats({ totalUsers:users.length, totalGames, totalCorrect, totalQuestions,
+        playedToday, topScore, topCat, activeBans:bans.length, lbEntries:lb.length });
+      setLoading(false);
+    });
+  }, []);
+
+  const Stat = ({ label, value, color="#f59e0b", sub="" }: any) => (
+    <div style={{ ...c.card, marginBottom:0, textAlign:"center" as const }}>
+      <div style={{ fontSize:28, fontWeight:900, color }}>{value}</div>
+      <div style={{ fontSize:11, color:"#6b7280", marginTop:4, textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>{label}</div>
+      {sub && <div style={{ fontSize:10, color:"#4b5563", marginTop:2 }}>{sub}</div>}
+    </div>
+  );
+
+  if (loading) return <div style={{ color:"#6b7280" }}>Loading…</div>;
+  const acc = stats.totalQuestions > 0 ? Math.round(stats.totalCorrect/stats.totalQuestions*100) : 0;
+
+  return (
+    <div>
+      <h1 style={c.h1}>📊 Dashboard</h1>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:12, marginBottom:24 }}>
+        <Stat label="Total Users" value={stats.totalUsers} color="#f59e0b" />
+        <Stat label="Total Games" value={stats.totalGames.toLocaleString()} color="#10b981" />
+        <Stat label="Active Today" value={stats.playedToday} color="#6366f1" />
+        <Stat label="Top Score" value={stats.topScore.toLocaleString()} color="#ef4444" />
+        <Stat label="LB Entries" value={stats.lbEntries} color="#f59e0b" />
+        <Stat label="Active Bans" value={stats.activeBans} color="#ef4444" />
+        <Stat label="Accuracy" value={`${acc}%`} color="#10b981" sub={`${stats.totalCorrect.toLocaleString()} / ${stats.totalQuestions.toLocaleString()}`} />
+        <Stat label="Top Category" value={CAT_EMOJI[stats.topCat]||"—"} color="#f59e0b" sub={stats.topCat} />
+      </div>
+    </div>
+  );
+}
+
+// ── ANNOUNCEMENT ──────────────────────────────────────────────────────────────
+function AnnouncementPanel() {
+  const [text, setText] = useState("");
+  const [current, setCurrent] = useState<any>(null);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const { msg, flash } = useFlash();
+
+  useEffect(() => {
+    get(ref(db, "config/announcement")).then(s => { if(s.exists()) setCurrent(s.val()); });
+    get(ref(db, "config/maintenanceMode")).then(s => { if(s.exists()) setMaintenanceMode(s.val()); });
+  }, []);
+
+  async function saveAnnouncement() {
+    if (!text.trim()) { flash("Enter announcement text", "error"); return; }
+    const data = { text:text.trim(), postedAt:new Date().toLocaleString() };
+    await set(ref(db, "config/announcement"), data);
+    setCurrent(data); setText("");
+    flash("Announcement posted — shows on everyone's home screen");
+  }
+
+  async function clearAnnouncement() {
+    await remove(ref(db, "config/announcement"));
+    setCurrent(null);
+    flash("Announcement cleared");
+  }
+
+  async function toggleMaintenance() {
+    const next = !maintenanceMode;
+    await set(ref(db, "config/maintenanceMode"), next);
+    setMaintenanceMode(next);
+    flash(next ? "🔴 Maintenance mode ON — non-admins see maintenance screen" : "🟢 Maintenance mode OFF");
+  }
+
+  return (
+    <div>
+      <h1 style={c.h1}>📢 Announcements & Maintenance</h1>
+      <Flash msg={msg} />
+
+      <div style={c.card}>
+        <div style={c.h2}>Maintenance Mode</div>
+        <p style={{ color:"#9ca3af", fontSize:13, marginBottom:14, lineHeight:1.6 }}>
+          When ON, non-admins see a maintenance screen instead of the game. You can still access everything.
+        </p>
+        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+          <div style={{ width:12, height:12, borderRadius:"50%", background:maintenanceMode?"#ef4444":"#10b981", flexShrink:0 }} />
+          <span style={{ color: maintenanceMode?"#ef4444":"#10b981", fontWeight:700 }}>
+            {maintenanceMode ? "Maintenance mode is ON" : "Game is live"}
+          </span>
+          <button onClick={toggleMaintenance} style={btn(maintenanceMode?"g":"r")}>
+            {maintenanceMode ? "Turn OFF" : "Turn ON"}
+          </button>
+        </div>
+      </div>
+
+      <div style={c.card}>
+        <div style={c.h2}>Global Announcement</div>
+        <p style={{ color:"#9ca3af", fontSize:13, marginBottom:14 }}>Shows as a banner on everyone's home screen.</p>
+        {current && (
+          <div style={{ background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.3)", borderRadius:10, padding:"12px 16px", marginBottom:14 }}>
+            <div style={{ fontSize:13, color:"#f59e0b", fontWeight:700, marginBottom:4 }}>Current announcement:</div>
+            <div style={{ color:"#e5e7eb" }}>{current.text}</div>
+            <div style={{ fontSize:11, color:"#4b5563", marginTop:6 }}>Posted: {current.postedAt}</div>
+            <button onClick={clearAnnouncement} style={{ ...btn("r"), marginTop:10 }}>Clear</button>
+          </div>
+        )}
+        <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Type your announcement…" style={c.textarea} />
+        <button onClick={saveAnnouncement} style={{ ...btn("y"), width:"100%" }}>Post Announcement</button>
+      </div>
+    </div>
+  );
+}
+
+// ── QUESTION EDITOR ───────────────────────────────────────────────────────────
+function QuestionsPanel() {
+  const [category, setCategory] = useState("geography");
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [editingKey, setEditingKey] = useState<string|null>(null);
+  const [form, setForm] = useState({ q:"", a:"", w1:"", w2:"", w3:"" });
+  const [search, setSearch] = useState("");
+  const { msg, flash } = useFlash();
+
+  useEffect(() => {
+    setLoading(true);
+    get(ref(db, `customQuestions/${category}`)).then(snap => {
+      if (!snap.exists()) { setQuestions([]); setLoading(false); return; }
+      const list = Object.entries(snap.val()).map(([key,v]:any) => ({ key, ...v }));
+      setQuestions(list);
+      setLoading(false);
+    });
+  }, [category]);
+
+  async function saveQuestion() {
+    if (!form.q.trim() || !form.a.trim() || !form.w1.trim() || !form.w2.trim() || !form.w3.trim()) {
+      flash("Fill in all fields", "error"); return;
+    }
+    const data = { q:form.q.trim(), a:form.a.trim(), w:[form.w1.trim(),form.w2.trim(),form.w3.trim()] };
+    if (editingKey) {
+      await set(ref(db, `customQuestions/${category}/${editingKey}`), data);
+      setQuestions(qs => qs.map(q => q.key===editingKey ? { key:editingKey, ...data } : q));
+      flash("Question updated");
+    } else {
+      const newRef = push(ref(db, `customQuestions/${category}`));
+      await set(newRef, data);
+      setQuestions(qs => [...qs, { key:newRef.key, ...data }]);
+      flash("Question added");
+    }
+    setForm({ q:"", a:"", w1:"", w2:"", w3:"" });
+    setEditingKey(null);
+  }
+
+  async function deleteQuestion(key: string) {
+    await remove(ref(db, `customQuestions/${category}/${key}`));
+    setQuestions(qs => qs.filter(q => q.key!==key));
+    flash("Deleted");
+  }
+
+  function startEdit(q: any) {
+    setEditingKey(q.key);
+    setForm({ q:q.q, a:q.a, w1:q.w[0]||"", w2:q.w[1]||"", w3:q.w[2]||"" });
+    window.scrollTo({ top:0, behavior:"smooth" });
+  }
+
+  const filtered = questions.filter(q => !search || q.q.toLowerCase().includes(search.toLowerCase()) || q.a.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div>
+      <h1 style={c.h1}>❓ Question Editor</h1>
+      <Flash msg={msg} />
+      <div style={{ background:"rgba(99,102,241,0.1)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#a5b4fc" }}>
+        Custom questions are stored in Firebase and mixed into the game alongside the built-in questions.
+      </div>
+
+      {/* Category tabs */}
+      <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
+        {CATEGORIES.map(cat => (
+          <button key={cat} onClick={() => setCategory(cat)} style={{
+            ...btn(category===cat?"y":""),
+            opacity: category===cat ? 1 : 0.6,
+          }}>{CAT_EMOJI[cat]} {cat}</button>
+        ))}
+      </div>
+
+      {/* Add/edit form */}
+      <div style={c.card}>
+        <div style={c.h2}>{editingKey ? "✏️ Edit question" : "➕ Add question"} — {CAT_EMOJI[category]} {category}</div>
+        <label style={c.label}>Question</label>
+        <textarea value={form.q} onChange={e=>setForm(f=>({...f,q:e.target.value}))} placeholder="Enter the question…" style={c.textarea} />
+        <label style={c.label}>Correct answer</label>
+        <input value={form.a} onChange={e=>setForm(f=>({...f,a:e.target.value}))} placeholder="Correct answer" style={{ ...c.input, borderColor:"rgba(16,185,129,0.4)", color:"#10b981" }} />
+        <label style={c.label}>Wrong answers</label>
+        <div style={c.grid2}>
+          <input value={form.w1} onChange={e=>setForm(f=>({...f,w1:e.target.value}))} placeholder="Wrong answer 1" style={{ ...c.input, borderColor:"rgba(239,68,68,0.3)" }} />
+          <input value={form.w2} onChange={e=>setForm(f=>({...f,w2:e.target.value}))} placeholder="Wrong answer 2" style={{ ...c.input, borderColor:"rgba(239,68,68,0.3)" }} />
+        </div>
+        <input value={form.w3} onChange={e=>setForm(f=>({...f,w3:e.target.value}))} placeholder="Wrong answer 3" style={{ ...c.input, borderColor:"rgba(239,68,68,0.3)" }} />
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={saveQuestion} style={{ ...btn("y"), flex:1 }}>{editingKey ? "Save changes" : "Add question"}</button>
+          {editingKey && <button onClick={() => { setEditingKey(null); setForm({ q:"", a:"", w1:"", w2:"", w3:"" }); }} style={btn()}>Cancel</button>}
+        </div>
+      </div>
+
+      {/* Question list */}
+      <div style={c.card}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+          <div style={c.h2}>{CAT_EMOJI[category]} Custom {category} questions ({questions.length})</div>
+        </div>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search questions…" style={c.input} />
+        {loading ? <div style={{ color:"#6b7280" }}>Loading…</div> :
+          filtered.length === 0 ? <div style={{ color:"#4b5563", fontSize:13 }}>No custom questions yet for this category.</div> :
+          filtered.map(q => (
+            <div key={q.key} style={{ ...c.row, alignItems:"flex-start" }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:600, fontSize:14, marginBottom:4 }}>{q.q}</div>
+                <div style={{ fontSize:12 }}>
+                  <span style={{ color:"#10b981" }}>✓ {q.a}</span>
+                  <span style={{ color:"#ef4444", marginLeft:12 }}>✗ {q.w.join(" · ")}</span>
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                <button onClick={() => startEdit(q)} style={btn("b")}>Edit</button>
+                <button onClick={() => deleteQuestion(q.key)} style={btn("r")}>Delete</button>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  );
 }
 
 // ── USERS PANEL ───────────────────────────────────────────────────────────────
@@ -54,205 +334,172 @@ function UsersPanel() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<any>(null);
-  const [msg, setMsg] = useState<{text:string;type:"success"|"error"|"info"}|null>(null);
+  const { msg, flash } = useFlash();
+  const [editUsername, setEditUsername] = useState("");
   const [editScore, setEditScore] = useState("");
   const [editStreak, setEditStreak] = useState("");
-  const [editUsername, setEditUsername] = useState("");
   const [editChangesLeft, setEditChangesLeft] = useState("");
-  const [editGamesPlayed, setEditGamesPlayed] = useState("");
-
-  const flash = (text: string, type: "success"|"error"|"info" = "success") => {
-    setMsg({ text, type });
-    setTimeout(() => setMsg(null), 3000);
-  };
+  const [editGames, setEditGames] = useState("");
 
   useEffect(() => {
     get(ref(db, "users")).then(snap => {
       if (!snap.exists()) { setLoading(false); return; }
-      const list = Object.entries(snap.val()).map(([uid, d]: [string, any]) => ({ uid, ...d }));
-      setUsers(list.sort((a, b) => (b.bestScore || 0) - (a.bestScore || 0)));
+      const list = Object.entries(snap.val()).map(([uid,d]:any) => ({ uid, ...d }));
+      setUsers(list.sort((a,b) => (b.bestScore||0)-(a.bestScore||0)));
       setLoading(false);
     });
   }, []);
 
-  async function deleteLeaderboardEntries(uid: string) {
-    const snap = await get(ref(db, "leaderboard"));
-    if (!snap.exists()) return;
-    const updates: any = {};
-    Object.keys(snap.val()).forEach(k => {
-      if (k.startsWith(uid + "_") || snap.val()[k]?.uid === uid) updates[`leaderboard/${k}`] = null;
-    });
-    if (Object.keys(updates).length) await update(ref(db), updates);
-  }
-
-  async function handleDeleteLB(uid: string, username: string) {
-    if (!confirm(`Delete all leaderboard entries for ${username}?`)) return;
-    await deleteLeaderboardEntries(uid);
-    flash(`Deleted leaderboard entries for ${username}`);
-  }
+  const patchUser = (uid: string, patch: any) => {
+    setUsers(u => u.map(x => x.uid===uid ? { ...x, ...patch } : x));
+    setSelected((s: any) => s?.uid===uid ? { ...s, ...patch } : s);
+  };
 
   async function handleSetUsername(uid: string) {
     const val = editUsername.trim();
-    if (!val || val.length < 2 || val.length > 15 || !/^[a-zA-Z0-9_]+$/.test(val)) {
-      flash("Invalid username", "error"); return;
-    }
-    const oldUsername = selected?.username;
+    if (!val||val.length<2||val.length>15||!/^[a-zA-Z0-9_]+$/.test(val)) { flash("Invalid username (2–15 chars, letters/numbers/underscores)", "error"); return; }
+    const old = selected?.username;
     const updates: any = {};
     updates[`users/${uid}/username`] = val;
     updates[`users/${uid}/displayName`] = val;
-    if (oldUsername) updates[`usernames/${oldUsername.toLowerCase()}`] = null;
+    if (old) updates[`usernames/${old.toLowerCase()}`] = null;
     updates[`usernames/${val.toLowerCase()}`] = uid;
     await update(ref(db), updates);
-    setUsers(u => u.map(x => x.uid === uid ? { ...x, username: val } : x));
-    setSelected((s: any) => ({ ...s, username: val }));
-    flash(`Username changed to ${val}`);
-    setEditUsername("");
+    patchUser(uid, { username:val });
+    flash(`Username → ${val}`); setEditUsername("");
+  }
+
+  async function handleSetScore(uid: string) {
+    const val = parseInt(editScore);
+    if (isNaN(val)) { flash("Invalid score", "error"); return; }
+    const snap = await get(ref(db, "leaderboard"));
+    if (snap.exists()) {
+      const updates: any = {};
+      Object.entries(snap.val()).forEach(([k,v]:any) => { if(k.startsWith(uid+"_")||v?.uid===uid) updates[`leaderboard/${k}/score`]=val; });
+      if (Object.keys(updates).length) await update(ref(db), updates);
+    }
+    await update(ref(db, `users/${uid}`), { bestScore:val });
+    patchUser(uid, { bestScore:val });
+    flash(`Best score → ${val}`); setEditScore("");
   }
 
   async function handleSetStreak(uid: string) {
     const val = parseInt(editStreak);
-    if (isNaN(val) || val < 0) { flash("Invalid streak", "error"); return; }
-    await update(ref(db, `users/${uid}`), { bestStreak: val });
-    setUsers(u => u.map(x => x.uid === uid ? { ...x, bestStreak: val } : x));
-    setSelected((s: any) => ({ ...s, bestStreak: val }));
-    flash(`Best streak set to ${val}`);
-    setEditStreak("");
+    if (isNaN(val)||val<0) { flash("Invalid streak", "error"); return; }
+    await update(ref(db, `users/${uid}`), { bestStreak:val });
+    patchUser(uid, { bestStreak:val });
+    flash(`Best streak → ${val}`); setEditStreak("");
   }
 
-  async function handleSetChangesLeft(uid: string) {
+  async function handleSetChanges(uid: string) {
     const val = parseInt(editChangesLeft);
-    if (isNaN(val) || val < 0) { flash("Invalid number", "error"); return; }
-    await update(ref(db, `users/${uid}`), { usernameChangesLeft: val });
-    setUsers(u => u.map(x => x.uid === uid ? { ...x, usernameChangesLeft: val } : x));
-    setSelected((s: any) => ({ ...s, usernameChangesLeft: val }));
-    flash(`Username changes left set to ${val}`);
-    setEditChangesLeft("");
+    if (isNaN(val)||val<0) { flash("Invalid number", "error"); return; }
+    await update(ref(db, `users/${uid}`), { usernameChangesLeft:val });
+    patchUser(uid, { usernameChangesLeft:val });
+    flash(`Username changes left → ${val}`); setEditChangesLeft("");
   }
 
-  async function handleSetGamesPlayed(uid: string) {
-    const val = parseInt(editGamesPlayed);
-    if (isNaN(val) || val < 0) { flash("Invalid number", "error"); return; }
-    await update(ref(db, `users/${uid}`), { gamesPlayed: val });
-    setUsers(u => u.map(x => x.uid === uid ? { ...x, gamesPlayed: val } : x));
-    setSelected((s: any) => ({ ...s, gamesPlayed: val }));
-    flash(`Games played set to ${val}`);
-    setEditGamesPlayed("");
+  async function handleSetGames(uid: string) {
+    const val = parseInt(editGames);
+    if (isNaN(val)||val<0) { flash("Invalid number", "error"); return; }
+    await update(ref(db, `users/${uid}`), { gamesPlayed:val });
+    patchUser(uid, { gamesPlayed:val });
+    flash(`Games played → ${val}`); setEditGames("");
   }
 
-  async function handleEditScore(uid: string) {
-    const score = parseInt(editScore);
-    if (isNaN(score) || score < 0) { flash("Invalid score", "error"); return; }
-    // Update all leaderboard entries for this uid
+  async function handleWipeStats(uid: string) {
+    if (!confirm(`Wipe all stats for ${selected?.username}? This cannot be undone.`)) return;
+    await update(ref(db, `users/${uid}`), { bestScore:0, bestStreak:0, gamesPlayed:0, totalScore:0, totalCorrect:0, totalQuestions:0, categoryBests:{} });
+    patchUser(uid, { bestScore:0, bestStreak:0, gamesPlayed:0 });
+    flash("Stats wiped");
+  }
+
+  async function handleDeleteLB(uid: string) {
+    if (!confirm(`Delete all leaderboard entries for ${selected?.username}?`)) return;
     const snap = await get(ref(db, "leaderboard"));
-    if (snap.exists()) {
-      const updates: any = {};
-      Object.entries(snap.val()).forEach(([k, v]: [string, any]) => {
-        if (k.startsWith(uid + "_") || v?.uid === uid) updates[`leaderboard/${k}/score`] = score;
-      });
-      if (Object.keys(updates).length) await update(ref(db), updates);
-    }
-    await update(ref(db, `users/${uid}`), { bestScore: score });
-    setUsers(u => u.map(x => x.uid === uid ? { ...x, bestScore: score } : x));
-    if (selected?.uid === uid) setSelected((s: any) => ({ ...s, bestScore: score }));
-    flash(`Score updated to ${score}`);
-    setEditScore("");
+    if (!snap.exists()) return;
+    const updates: any = {};
+    Object.keys(snap.val()).forEach(k => { if(k.startsWith(uid+"_")||snap.val()[k]?.uid===uid) updates[`leaderboard/${k}`]=null; });
+    if (Object.keys(updates).length) await update(ref(db), updates);
+    flash("Leaderboard entries deleted");
   }
 
   async function handleToggleAdmin(uid: string, current: boolean) {
-    await update(ref(db, `users/${uid}`), { isAdmin: !current });
-    setUsers(u => u.map(x => x.uid === uid ? { ...x, isAdmin: !current } : x));
-    if (selected?.uid === uid) setSelected((s: any) => ({ ...s, isAdmin: !current }));
-    flash(`Admin ${!current ? "granted" : "revoked"}`);
+    await update(ref(db, `users/${uid}`), { isAdmin:!current });
+    patchUser(uid, { isAdmin:!current });
+    flash(`Admin ${!current?"granted":"revoked"}`);
   }
 
-  const filtered = users.filter(u =>
-    !search || u.username?.toLowerCase().includes(search.toLowerCase()) || u.uid.includes(search)
-  );
+  const filtered = users.filter(u => !search || u.username?.toLowerCase().includes(search.toLowerCase()) || u.uid.includes(search));
 
   return (
     <div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
-        <h1 style={{ fontSize:"1.4rem", fontWeight:900, margin:0 }}>Users <span style={{ color:"#4b5563", fontSize:"1rem", fontWeight:400 }}>({users.length})</span></h1>
-      </div>
-      {msg && <Msg {...msg} />}
-      <input value={search} onChange={e => setSearch(e.target.value)}
-        placeholder="Search by username or UID…" style={s.input} />
+      <h1 style={c.h1}>👥 Users ({users.length})</h1>
+      <Flash msg={msg} />
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by username or UID…" style={c.input} />
 
-      <div style={{ display:"grid", gridTemplateColumns: selected ? "1fr 340px" : "1fr", gap:20 }}>
-        {/* User list */}
-        <div style={s.card}>
+      <div style={{ display:"grid", gridTemplateColumns:selected?"1fr 360px":"1fr", gap:20 }}>
+        <div style={c.card}>
           {loading ? <div style={{ color:"#6b7280" }}>Loading…</div> :
             filtered.map(u => (
-              <div key={u.uid} onClick={() => setSelected(selected?.uid === u.uid ? null : u)}
-                style={{ ...s.row, cursor:"pointer", background: selected?.uid === u.uid ? "rgba(245,158,11,0.05)" : "transparent",
-                  borderRadius:8, padding:"10px 8px" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <Avatar src={u.photoURL} name={u.username || "?"} size={36} />
-                  <div>
-                    <div style={{ fontWeight:700, fontSize:14 }}>
+              <div key={u.uid} onClick={() => setSelected(selected?.uid===u.uid?null:u)}
+                style={{ ...c.row, cursor:"pointer", background:selected?.uid===u.uid?"rgba(245,158,11,0.05)":"transparent", borderRadius:8, padding:"10px 8px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, flex:1, minWidth:0 }}>
+                  <Avatar src={u.photoURL} name={u.username||"?"} size={36} />
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
                       {u.username}
-                      {u.isAdmin && <span style={{ marginLeft:6, ...s.tag("245,158,11") }}>admin</span>}
+                      {u.isAdmin && <span style={{ marginLeft:6, ...tag("245,158,11") }}>admin</span>}
+                      {u.banned && <span style={{ marginLeft:6, ...tag("239,68,68") }}>banned</span>}
                     </div>
-                    <div style={{ fontSize:11, color:"#4b5563", fontFamily:"monospace" }}>{u.uid.slice(0,16)}…</div>
+                    <div style={{ fontSize:11, color:"#4b5563", fontFamily:"monospace" }}>{u.uid.slice(0,18)}…</div>
                   </div>
                 </div>
-                <div style={{ textAlign:"right" }}>
-                  <div style={{ color:"#f59e0b", fontWeight:800 }}>{u.bestScore ?? 0}</div>
-                  <div style={{ fontSize:11, color:"#6b7280" }}>{u.gamesPlayed ?? 0} games</div>
+                <div style={{ textAlign:"right" as const, flexShrink:0 }}>
+                  <div style={{ color:"#f59e0b", fontWeight:800 }}>{u.bestScore??0}</div>
+                  <div style={{ fontSize:11, color:"#6b7280" }}>{u.gamesPlayed??0} games</div>
                 </div>
               </div>
             ))
           }
         </div>
 
-        {/* Detail panel */}
         {selected && (
-          <div style={s.card}>
+          <div style={{ ...c.card, position:"sticky" as const, top:20, alignSelf:"start" }}>
             <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16, paddingBottom:16, borderBottom:"1px solid #2d2d44" }}>
               <Avatar src={selected.photoURL} name={selected.username} size={48} />
-              <div>
+              <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontWeight:900, fontSize:"1.1rem" }}>{selected.username}</div>
-                <div style={{ fontSize:11, color:"#6b7280", fontFamily:"monospace", wordBreak:"break-all" as const }}>{selected.uid}</div>
+                <div style={{ fontSize:10, color:"#6b7280", fontFamily:"monospace", wordBreak:"break-all" as const }}>{selected.uid}</div>
               </div>
+              <button onClick={()=>setSelected(null)} style={{ background:"transparent", border:"none", color:"#6b7280", fontSize:18, cursor:"pointer" }}>×</button>
             </div>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:16 }}>
-              {[["Best Score", selected.bestScore ?? 0, "#f59e0b"], ["Games", selected.gamesPlayed ?? 0, "#e5e7eb"],
-                ["Best Streak", selected.bestStreak ?? 0, "#ef4444"], ["UN Changes", selected.usernameChangesLeft ?? 3, "#10b981"]
-              ].map(([l, v, c]) => (
-                <div key={l as string} style={{ background:"#0f0f1a", borderRadius:10, padding:"10px", textAlign:"center", border:"1px solid #2d2d44" }}>
-                  <div style={{ fontSize:18, fontWeight:900, color: c as string }}>{v as number}</div>
+              {[["Score",selected.bestScore??0,"#f59e0b"],["Games",selected.gamesPlayed??0,"#e5e7eb"],
+                ["Streak",selected.bestStreak??0,"#ef4444"],["UN Left",selected.usernameChangesLeft??3,"#10b981"]
+              ].map(([l,v,col])=>(
+                <div key={l as string} style={{ background:"#0f0f1a", borderRadius:10, padding:"10px", textAlign:"center" as const, border:"1px solid #2d2d44" }}>
+                  <div style={{ fontSize:18, fontWeight:900, color:col as string }}>{v as number}</div>
                   <div style={{ fontSize:10, color:"#6b7280" }}>{l}</div>
                 </div>
               ))}
             </div>
 
-            {[
-              { label:"Username", value:editUsername, set:setEditUsername, onSave:() => handleSetUsername(selected.uid), placeholder:"New username", color:"#10b981", alpha:false },
-              { label:"Best score", value:editScore, set:setEditScore, onSave:() => handleEditScore(selected.uid), placeholder:"New score", color:"#6366f1", alpha:false },
-              { label:"Best streak", value:editStreak, set:setEditStreak, onSave:() => handleSetStreak(selected.uid), placeholder:"New streak", color:"#ef4444", alpha:false },
-              { label:"Username changes left", value:editChangesLeft, set:setEditChangesLeft, onSave:() => handleSetChangesLeft(selected.uid), placeholder:"e.g. 0, 3, 99", color:"#f59e0b", alpha:false },
-              { label:"Games played", value:editGamesPlayed, set:setEditGamesPlayed, onSave:() => handleSetGamesPlayed(selected.uid), placeholder:"New count", color:"#6366f1", alpha:false },
-            ].map(({ label, value, set, onSave, placeholder, color, alpha }) => (
-              <div key={label} style={{ marginBottom:10 }}>
-                <label style={s.label}>{label}</label>
-                <div style={{ display:"flex", gap:8 }}>
-                  <input value={value} onChange={e => set(e.target.value)}
-                    placeholder={placeholder} style={{ ...s.input, marginBottom:0, flex:1 }} />
-                  <button onClick={onSave} style={s.btn(color)}>Set</button>
-                </div>
-              </div>
-            ))}
+            <EditRow label="Username" value={editUsername} onChange={setEditUsername} onSave={()=>handleSetUsername(selected.uid)} placeholder="New username" color="g" />
+            <EditRow label="Best score" value={editScore} onChange={setEditScore} onSave={()=>handleSetScore(selected.uid)} placeholder="New score" color="b" />
+            <EditRow label="Best streak" value={editStreak} onChange={setEditStreak} onSave={()=>handleSetStreak(selected.uid)} placeholder="New streak" color="r" />
+            <EditRow label="Username changes left" value={editChangesLeft} onChange={setEditChangesLeft} onSave={()=>handleSetChanges(selected.uid)} placeholder="e.g. 0, 3, 99" color="y" />
+            <EditRow label="Games played" value={editGames} onChange={setEditGames} onSave={()=>handleSetGames(selected.uid)} placeholder="New count" color="b" />
 
-            <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:4 }}>
-              <button onClick={() => handleDeleteLB(selected.uid, selected.username)} style={s.btn("#ef4444")}>
-                Delete leaderboard entries
+            <div style={{ display:"flex", flexDirection:"column" as const, gap:8, marginTop:4, paddingTop:12, borderTop:"1px solid #2d2d44" }}>
+              <button onClick={()=>handleWipeStats(selected.uid)} style={btn("r",true)}>⚠️ Wipe all stats</button>
+              <button onClick={()=>handleDeleteLB(selected.uid)} style={btn("r",true)}>Delete leaderboard entries</button>
+              <button onClick={()=>handleToggleAdmin(selected.uid,selected.isAdmin)} style={btn(selected.isAdmin?"r":"y",true)}>
+                {selected.isAdmin?"Revoke admin":"Grant admin"}
               </button>
-              <button onClick={() => handleToggleAdmin(selected.uid, selected.isAdmin)} style={s.btn(selected.isAdmin ? "#ef4444" : "#f59e0b")}>
-                {selected.isAdmin ? "Revoke admin" : "Grant admin"}
-              </button>
-              <a href={`/admin?ban=${selected.uid}`} style={{ ...s.btn("#ef4444"), textAlign:"center", textDecoration:"none", display:"block" }}>
-                Go to Ban panel →
+              <a href={`/admin?tab=bans&uid=${selected.uid}`} style={{ ...btn("r",true), textAlign:"center" as const, textDecoration:"none", display:"block" }}>
+                Ban this user →
               </a>
             </div>
           </div>
@@ -267,259 +514,252 @@ function LeaderboardPanel() {
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [msg, setMsg] = useState<{text:string;type:"success"|"error"|"info"}|null>(null);
+  const [catFilter, setCatFilter] = useState("all");
+  const { msg, flash } = useFlash();
   const [editingKey, setEditingKey] = useState<string|null>(null);
   const [editScore, setEditScore] = useState("");
-
-  const flash = (text: string, type: "success"|"error"|"info" = "success") => {
-    setMsg({ text, type }); setTimeout(() => setMsg(null), 3000);
-  };
 
   useEffect(() => {
     const lbRef = ref(db, "leaderboard");
     const unsub = onValue(lbRef, snap => {
       if (!snap.exists()) { setEntries([]); setLoading(false); return; }
-      const list = Object.entries(snap.val()).map(([key, d]: [string, any]) => ({ key, ...d }));
-      setEntries(list.sort((a, b) => b.score - a.score));
+      const list = Object.entries(snap.val()).map(([key,d]:any) => ({ key, ...d }));
+      setEntries(list.sort((a,b)=>b.score-a.score));
       setLoading(false);
     });
     return () => off(lbRef);
   }, []);
 
   async function handleDelete(key: string, name: string) {
-    if (!confirm(`Delete "${name}" from leaderboard?`)) return;
+    if (!confirm(`Delete "${name}"?`)) return;
     await remove(ref(db, `leaderboard/${key}`));
     flash(`Deleted ${name}`);
   }
 
-  async function handleEditScore(key: string) {
-    const score = parseInt(editScore);
-    if (isNaN(score) || score < 0) { flash("Invalid score", "error"); return; }
-    await update(ref(db, `leaderboard/${key}`), { score });
-    flash(`Score updated to ${score}`);
-    setEditingKey(null);
-    setEditScore("");
+  async function handleBulkDelete() {
+    const toDelete = filtered;
+    if (!toDelete.length) return;
+    if (!confirm(`Delete all ${toDelete.length} shown entries?`)) return;
+    const updates: any = {};
+    toDelete.forEach(e => updates[`leaderboard/${e.key}`] = null);
+    await update(ref(db), updates);
+    flash(`Deleted ${toDelete.length} entries`);
   }
 
-  const filtered = entries.filter(e =>
-    !search || e.name?.toLowerCase().includes(search.toLowerCase()) || e.username?.toLowerCase().includes(search.toLowerCase())
-  );
+  async function handleEditScore(key: string) {
+    const score = parseInt(editScore);
+    if (isNaN(score)) { flash("Invalid score", "error"); return; }
+    await update(ref(db, `leaderboard/${key}`), { score });
+    flash(`Score → ${score}`); setEditingKey(null); setEditScore("");
+  }
+
+  const filtered = entries.filter(e => {
+    if (catFilter!=="all" && e.category!==catFilter) return false;
+    if (search && !e.name?.toLowerCase().includes(search.toLowerCase()) && !e.username?.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
   return (
     <div>
-      <h1 style={{ fontSize:"1.4rem", fontWeight:900, marginBottom:20 }}>Leaderboard <span style={{ color:"#4b5563", fontSize:"1rem", fontWeight:400 }}>({entries.length} entries)</span></h1>
-      {msg && <Msg {...msg} />}
-      <input value={search} onChange={e => setSearch(e.target.value)}
-        placeholder="Search by name…" style={s.input} />
-      <div style={s.card}>
-        {loading ? <div style={{ color:"#6b7280" }}>Loading…</div> : filtered.length === 0 ? (
-          <div style={{ color:"#4b5563", padding:"12px 0" }}>No entries found</div>
-        ) : filtered.map((e, i) => (
-          <div key={e.key} style={{ ...s.row, flexWrap:"wrap" as const, gap:8 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10, flex:1, minWidth:0 }}>
-              <span style={{ fontSize:12, fontWeight:800, color:"#4b5563", width:28, textAlign:"right", flexShrink:0 }}>{i + 1}</span>
-              <div style={{ minWidth:0 }}>
-                <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{e.name}</div>
-                <div style={{ fontSize:10, color:"#4b5563" }}>
-                  {e.category} · {e.roundSize ?? "?"}Q · {e.timerDuration === 0 ? "∞" : `${e.timerDuration ?? "?"}s`} · {e.date ?? ""}
-                </div>
+      <h1 style={c.h1}>🏆 Leaderboard ({entries.length} entries)</h1>
+      <Flash msg={msg} />
+      <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const, marginBottom:12 }}>
+        {["all",...CATEGORIES].map(cat=>(
+          <button key={cat} onClick={()=>setCatFilter(cat)} style={{ ...btn(catFilter===cat?"y":""), opacity:catFilter===cat?1:0.6, fontSize:12, padding:"5px 10px" }}>
+            {cat==="all"?"All":CAT_EMOJI[cat]+" "+cat}
+          </button>
+        ))}
+      </div>
+      <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name…" style={{ ...c.input, marginBottom:0, flex:1 }} />
+        <button onClick={handleBulkDelete} style={btn("r")}>Delete shown ({filtered.length})</button>
+      </div>
+      <div style={c.card}>
+        {loading ? <div style={{ color:"#6b7280" }}>Loading…</div> :
+          filtered.length===0 ? <div style={{ color:"#4b5563" }}>No entries</div> :
+          filtered.map((e,i)=>(
+            <div key={e.key} style={c.row}>
+              <span style={{ fontSize:12, fontWeight:800, color:"#4b5563", width:28, textAlign:"right" as const, flexShrink:0 }}>{i+1}</span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{e.name}</div>
+                <div style={{ fontSize:10, color:"#4b5563" }}>{e.category} · {e.roundSize??'?'}Q · {e.timerDuration===0?"∞":`${e.timerDuration??'?'}s`} · {e.date??''}</div>
               </div>
-            </div>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              {editingKey === e.key ? (
-                <>
-                  <input value={editScore} onChange={ev => setEditScore(ev.target.value.replace(/\D/g,""))}
-                    placeholder="Score" style={{ ...s.input, width:80, marginBottom:0 }} />
-                  <button onClick={() => handleEditScore(e.key)} style={s.success}>Save</button>
-                  <button onClick={() => setEditingKey(null)} style={{ ...s.danger, background:"transparent" }}>✕</button>
-                </>
+              {editingKey===e.key ? (
+                <div style={{ display:"flex", gap:6 }}>
+                  <input value={editScore} onChange={ev=>setEditScore(ev.target.value)} placeholder="Score"
+                    style={{ ...c.input, marginBottom:0, width:80 }} />
+                  <button onClick={()=>handleEditScore(e.key)} style={btn("g")}>✓</button>
+                  <button onClick={()=>setEditingKey(null)} style={btn()}>✕</button>
+                </div>
               ) : (
-                <>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <span style={{ color:"#f59e0b", fontWeight:800, fontSize:15 }}>{e.score}</span>
-                  <button onClick={() => { setEditingKey(e.key); setEditScore(String(e.score)); }} style={s.btn("#6366f1")}>Edit</button>
-                  <button onClick={() => handleDelete(e.key, e.name)} style={s.danger}>Delete</button>
-                </>
+                  <button onClick={()=>{setEditingKey(e.key);setEditScore(String(e.score));}} style={btn("b")}>Edit</button>
+                  <button onClick={()=>handleDelete(e.key,e.name)} style={btn("r")}>Delete</button>
+                </div>
               )}
             </div>
-          </div>
-        ))}
+          ))
+        }
+      </div>
+    </div>
+  );
+}
+
+// ── REPORTS PANEL ─────────────────────────────────────────────────────────────
+function ReportsPanel() {
+  const [reports, setReports] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { msg, flash } = useFlash();
+
+  useEffect(() => {
+    get(ref(db, "reports")).then(snap => {
+      if (!snap.exists()) { setLoading(false); return; }
+      const list = Object.entries(snap.val()).map(([key,d]:any) => ({ key, ...d }));
+      setReports(list.sort((a,b)=>b.ts-a.ts));
+      setLoading(false);
+    });
+  }, []);
+
+  async function dismiss(key: string) {
+    await remove(ref(db, `reports/${key}`));
+    setReports(r => r.filter(x=>x.key!==key));
+    flash("Report dismissed");
+  }
+
+  return (
+    <div>
+      <h1 style={c.h1}>🚩 Score Reports ({reports.length})</h1>
+      <Flash msg={msg} />
+      <div style={{ background:"rgba(99,102,241,0.1)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#a5b4fc" }}>
+        Players can report suspicious scores — they'll show up here for you to review.
+      </div>
+      <div style={c.card}>
+        {loading ? <div style={{ color:"#6b7280" }}>Loading…</div> :
+          reports.length===0 ? <div style={{ color:"#4b5563" }}>No reports — all clear!</div> :
+          reports.map(r=>(
+            <div key={r.key} style={c.row}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:700 }}>{r.reportedName} <span style={{ color:"#ef4444" }}>({r.score} pts)</span></div>
+                <div style={{ fontSize:12, color:"#9ca3af", marginTop:2 }}>{r.reason||"No reason given"}</div>
+                <div style={{ fontSize:11, color:"#4b5563" }}>Reported by {r.reporterName} · {r.category} · {r.date}</div>
+              </div>
+              <button onClick={()=>dismiss(r.key)} style={btn()}>Dismiss</button>
+            </div>
+          ))
+        }
       </div>
     </div>
   );
 }
 
 // ── BANS PANEL ────────────────────────────────────────────────────────────────
-function BansPanel({ initUid }: { initUid?: string }) {
+function BansPanel({ initUid }: { initUid?:string }) {
   const [bans, setBans] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [search, setSearch] = useState(initUid || "");
-  const [banUid, setBanUid] = useState("");
+  const [banUid, setBanUid] = useState(initUid||"");
   const [banReason, setBanReason] = useState("");
   const [banType, setBanType] = useState<"permanent"|"temp">("temp");
   const [banDays, setBanDays] = useState("1");
-  const [msg, setMsg] = useState<{text:string;type:"success"|"error"|"info"}|null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const flash = (text: string, type: "success"|"error"|"info" = "success") => {
-    setMsg({ text, type }); setTimeout(() => setMsg(null), 3000);
-  };
+  const [search, setSearch] = useState("");
+  const { msg, flash } = useFlash();
 
   useEffect(() => {
-    Promise.all([
-      get(ref(db, "bans")),
-      get(ref(db, "users")),
-    ]).then(([banSnap, userSnap]) => {
-      if (banSnap.exists()) {
-        const list = Object.entries(banSnap.val()).map(([uid, d]: [string, any]) => ({ uid, ...d }));
-        setBans(list);
-      }
-      if (userSnap.exists()) {
-        setUsers(Object.entries(userSnap.val()).map(([uid, d]: [string, any]) => ({ uid, ...d })));
-      }
-      setLoading(false);
+    Promise.all([get(ref(db,"bans")),get(ref(db,"users"))]).then(([bSnap,uSnap])=>{
+      if(bSnap.exists()) setBans(Object.entries(bSnap.val()).map(([uid,d]:any)=>({uid,...d})));
+      if(uSnap.exists()) setUsers(Object.entries(uSnap.val()).map(([uid,d]:any)=>({uid,...d})));
     });
   }, []);
 
-  // Auto-fill if coming from user panel
-  useEffect(() => {
-    if (initUid) setBanUid(initUid);
-  }, [initUid]);
+  useEffect(() => { if(initUid) setBanUid(initUid); }, [initUid]);
 
-  function resolveUser(input: string) {
-    // Try UID first, then username
-    const byUid = users.find(u => u.uid === input.trim());
-    if (byUid) return byUid;
-    return users.find(u => u.username?.toLowerCase() === input.trim().toLowerCase());
-  }
+  const resolveUser = (input: string) => users.find(u=>u.uid===input.trim()) || users.find(u=>u.username?.toLowerCase()===input.trim().toLowerCase());
 
   async function handleBan() {
     const target = resolveUser(banUid);
-    if (!target) { flash("User not found", "error"); return; }
-    if (!banReason.trim()) { flash("Enter a reason", "error"); return; }
-
+    if (!target) { flash("User not found","error"); return; }
+    if (!banReason.trim()) { flash("Enter a reason","error"); return; }
     const now = Date.now();
-    const expiresAt = banType === "temp" ? now + parseInt(banDays) * 86400000 : null;
-
-    const banData: any = {
-      username: target.username,
-      photoURL: target.photoURL || null,
-      reason: banReason.trim(),
-      bannedAt: now,
-      type: banType,
-      expiresAt,
-    };
-
-    await set(ref(db, `bans/${target.uid}`), banData);
-    await update(ref(db, `users/${target.uid}`), { banned: true, banExpiresAt: expiresAt });
-    setBans(b => [...b.filter(x => x.uid !== target.uid), { uid: target.uid, ...banData }]);
-    flash(`${target.username} ${banType === "temp" ? `banned for ${banDays} day(s)` : "permanently banned"}`);
+    const expiresAt = banType==="temp" ? now+parseInt(banDays)*86400000 : null;
+    const banData: any = { username:target.username, photoURL:target.photoURL||null, reason:banReason.trim(), bannedAt:now, type:banType, expiresAt };
+    await set(ref(db,`bans/${target.uid}`), banData);
+    await update(ref(db,`users/${target.uid}`), { banned:true, banExpiresAt:expiresAt });
+    setBans(b=>[...b.filter(x=>x.uid!==target.uid),{uid:target.uid,...banData}]);
+    flash(`${target.username} ${banType==="temp"?`banned for ${banDays}d`:"permanently banned"}`);
     setBanUid(""); setBanReason(""); setBanDays("1");
   }
 
   async function handleUnban(uid: string, username: string) {
-    await remove(ref(db, `bans/${uid}`));
-    await update(ref(db, `users/${uid}`), { banned: false, banExpiresAt: null });
-    setBans(b => b.filter(x => x.uid !== uid));
+    await remove(ref(db,`bans/${uid}`));
+    await update(ref(db,`users/${uid}`),{banned:false,banExpiresAt:null});
+    setBans(b=>b.filter(x=>x.uid!==uid));
     flash(`${username} unbanned`);
   }
 
-  const filteredBans = bans.filter(b =>
-    !search || b.username?.toLowerCase().includes(search.toLowerCase()) || b.uid.includes(search)
-  );
+  const target = banUid ? resolveUser(banUid) : null;
+  const filtered = bans.filter(b=>!search||b.username?.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div>
-      <h1 style={{ fontSize:"1.4rem", fontWeight:900, marginBottom:20 }}>Bans <span style={{ color:"#4b5563", fontSize:"1rem", fontWeight:400 }}>({bans.length} active)</span></h1>
-      {msg && <Msg {...msg} />}
-
-      {/* Ban form */}
-      <div style={s.card}>
-        <div style={s.h2}>Issue Ban</div>
-        <label style={s.label}>Username or UID</label>
-        <input value={banUid} onChange={e => setBanUid(e.target.value)}
-          placeholder="username or full UID" style={s.input} />
-
-        {banUid && resolveUser(banUid) && (
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12, padding:"8px 12px",
-            background:"rgba(16,185,129,0.08)", border:"1px solid rgba(16,185,129,0.2)", borderRadius:8 }}>
-            <Avatar src={resolveUser(banUid)?.photoURL} name={resolveUser(banUid)?.username} size={32} />
-            <div>
-              <div style={{ fontWeight:700 }}>{resolveUser(banUid)?.username}</div>
-              <div style={{ fontSize:11, color:"#6b7280" }}>{resolveUser(banUid)?.uid?.slice(0,20)}…</div>
-            </div>
+      <h1 style={c.h1}>🔨 Bans ({bans.length} active)</h1>
+      <Flash msg={msg} />
+      <div style={c.card}>
+        <div style={c.h2}>Issue Ban</div>
+        <label style={c.label}>Username or UID</label>
+        <input value={banUid} onChange={e=>setBanUid(e.target.value)} placeholder="username or full UID" style={c.input} />
+        {target && (
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12, padding:"8px 12px", background:"rgba(16,185,129,0.08)", border:"1px solid rgba(16,185,129,0.2)", borderRadius:8 }}>
+            <Avatar src={target.photoURL} name={target.username} size={32} />
+            <div><div style={{ fontWeight:700 }}>{target.username}</div><div style={{ fontSize:11, color:"#6b7280" }}>{target.uid?.slice(0,20)}…</div></div>
           </div>
         )}
-
-        <label style={s.label}>Reason</label>
-        <input value={banReason} onChange={e => setBanReason(e.target.value)}
-          placeholder="e.g. cheating, harassment" style={s.input} />
-
-        <label style={s.label}>Ban type</label>
+        <label style={c.label}>Reason</label>
+        <input value={banReason} onChange={e=>setBanReason(e.target.value)} placeholder="e.g. cheating, harassment" style={c.input} />
+        <label style={c.label}>Ban type</label>
         <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-          {(["temp", "permanent"] as const).map(t => (
-            <button key={t} onClick={() => setBanType(t)} style={{
-              ...s.btn(banType === t ? "#ef4444" : "#6b7280"),
-              opacity: banType === t ? 1 : 0.5,
-            }}>{t === "temp" ? "⏱ Temporary" : "🔒 Permanent"}</button>
+          {(["temp","permanent"] as const).map(t=>(
+            <button key={t} onClick={()=>setBanType(t)} style={{ ...btn(banType===t?"r":""), opacity:banType===t?1:0.5 }}>
+              {t==="temp"?"⏱ Temporary":"🔒 Permanent"}
+            </button>
           ))}
         </div>
-
-        {banType === "temp" && (
+        {banType==="temp" && (
           <>
-            <label style={s.label}>Duration (days)</label>
+            <label style={c.label}>Duration</label>
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const, marginBottom:12 }}>
-              {["1","3","7","14","30","90"].map(d => (
-                <button key={d} onClick={() => setBanDays(d)} style={{
-                  ...s.btn(banDays === d ? "#ef4444" : "#6b7280"),
-                  opacity: banDays === d ? 1 : 0.5, padding:"6px 12px",
-                }}>{d}d</button>
+              {["1","3","7","14","30","90"].map(d=>(
+                <button key={d} onClick={()=>setBanDays(d)} style={{ ...btn(banDays===d?"r":""), opacity:banDays===d?1:0.5 }}>{d}d</button>
               ))}
-              <input value={banDays} onChange={e => setBanDays(e.target.value.replace(/\D/g,""))}
-                placeholder="custom" style={{ ...s.input, marginBottom:0, width:80 }} />
+              <input value={banDays} onChange={e=>setBanDays(e.target.value.replace(/\D/g,""))} placeholder="custom days" style={{ ...c.input, marginBottom:0, width:100 }} />
             </div>
           </>
         )}
-
-        <button onClick={handleBan} style={{
-          width:"100%", background:"linear-gradient(135deg,#ef4444,#b91c1c)",
-          border:"none", borderRadius:10, color:"#fff", fontSize:"0.95rem",
-          fontWeight:800, padding:"12px", cursor:"pointer",
-        }}>
-          {banType === "temp" ? `Ban for ${banDays} day(s)` : "Permanently Ban"}
+        <button onClick={handleBan} style={{ width:"100%", background:"linear-gradient(135deg,#ef4444,#b91c1c)", border:"none", borderRadius:10, color:"#fff", fontSize:"0.95rem", fontWeight:800, padding:"12px", cursor:"pointer" }}>
+          {banType==="temp"?`Ban for ${banDays} day(s)`:"Permanently Ban"}
         </button>
       </div>
 
-      {/* Active bans */}
-      <div style={s.card}>
-        <div style={s.h2}>Active Bans</div>
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search bans…" style={s.input} />
-        {loading ? <div style={{ color:"#6b7280" }}>Loading…</div> :
-          filteredBans.length === 0 ? <div style={{ color:"#4b5563" }}>No bans found</div> :
-          filteredBans.map(b => {
-            const isExpired = b.expiresAt && b.expiresAt < Date.now();
-            const daysLeft = b.expiresAt ? Math.max(0, Math.ceil((b.expiresAt - Date.now()) / 86400000)) : null;
+      <div style={c.card}>
+        <div style={c.h2}>Active Bans</div>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search…" style={c.input} />
+        {filtered.length===0 ? <div style={{ color:"#4b5563" }}>No bans</div> :
+          filtered.map(b=>{
+            const isExpired = b.expiresAt && b.expiresAt<Date.now();
+            const daysLeft = b.expiresAt ? Math.max(0,Math.ceil((b.expiresAt-Date.now())/86400000)) : null;
             return (
-              <div key={b.uid} style={{ ...s.row, flexWrap:"wrap" as const, gap:8 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:10, flex:1, minWidth:0 }}>
-                  <Avatar src={b.photoURL} name={b.username || "?"} size={36} />
-                  <div style={{ minWidth:0 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                      <span style={{ fontWeight:700 }}>{b.username}</span>
-                      {b.type === "permanent"
-                        ? <span style={s.tag("239,68,68")}>permanent</span>
-                        : isExpired
-                          ? <span style={s.tag("107,114,128")}>expired</span>
-                          : <span style={s.tag("245,158,11")}>{daysLeft}d left</span>
-                      }
-                    </div>
-                    <div style={{ fontSize:11, color:"#6b7280" }}>{b.reason}</div>
-                    <div style={{ fontSize:10, color:"#4b5563" }}>
-                      {new Date(b.bannedAt).toLocaleString()}
-                    </div>
+              <div key={b.uid} style={c.row}>
+                <Avatar src={b.photoURL} name={b.username||"?"} size={36} />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <span style={{ fontWeight:700 }}>{b.username}</span>
+                    {b.type==="permanent" ? <span style={tag("239,68,68")}>permanent</span>
+                      : isExpired ? <span style={tag("107,114,128")}>expired</span>
+                      : <span style={tag("245,158,11")}>{daysLeft}d left</span>}
                   </div>
+                  <div style={{ fontSize:11, color:"#6b7280" }}>{b.reason}</div>
+                  <div style={{ fontSize:10, color:"#4b5563" }}>{new Date(b.bannedAt).toLocaleString()}</div>
                 </div>
-                <button onClick={() => handleUnban(b.uid, b.username)} style={s.success}>Unban</button>
+                <button onClick={()=>handleUnban(b.uid,b.username)} style={btn("g")}>Unban</button>
               </div>
             );
           })
@@ -529,55 +769,53 @@ function BansPanel({ initUid }: { initUid?: string }) {
   );
 }
 
+// ── NAV ───────────────────────────────────────────────────────────────────────
+const NAV = [
+  { id:"dashboard",     icon:"📊", label:"Dashboard" },
+  { id:"announcements", icon:"📢", label:"Announcements" },
+  { id:"questions",     icon:"❓", label:"Questions" },
+  { id:"users",         icon:"👥", label:"Users" },
+  { id:"leaderboard",   icon:"🏆", label:"Leaderboard" },
+  { id:"reports",       icon:"🚩", label:"Reports" },
+  { id:"bans",          icon:"🔨", label:"Bans" },
+];
+
 // ── ROOT ──────────────────────────────────────────────────────────────────────
 export default function AdminPage() {
   const [user, setUser] = useState<User|null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [tab, setTab] = useState("users");
+  const [tab, setTab] = useState("dashboard");
   const [initBanUid, setInitBanUid] = useState<string|undefined>();
 
   useEffect(() => {
-    // Check for ?ban=uid param
     const params = new URLSearchParams(window.location.search);
-    const banParam = params.get("ban");
-    if (banParam) { setInitBanUid(banParam); setTab("bans"); }
+    const t = params.get("tab"); if(t) setTab(t);
+    const uid = params.get("uid")||params.get("ban"); if(uid) { setInitBanUid(uid); if(!t) setTab("bans"); }
   }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async u => {
-      setUser(u);
-      setAuthLoading(false);
+      setUser(u); setAuthLoading(false);
       if (u) {
-        const snap = await get(ref(db, `users/${u.uid}/isAdmin`));
-        setIsAdmin(snap.exists() && snap.val() === true);
+        const snap = await get(ref(db,`users/${u.uid}/isAdmin`));
+        setIsAdmin(snap.exists()&&snap.val()===true);
       }
     });
     return () => unsub();
   }, []);
 
-  if (authLoading) return (
-    <div style={{ ...s.page, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ color:"#6b7280" }}>Loading…</div>
-    </div>
-  );
+  if (authLoading) return <div style={{ ...c.page, display:"flex", alignItems:"center", justifyContent:"center" }}><div style={{ color:"#6b7280" }}>Loading…</div></div>;
 
   if (!user) return (
-    <div style={{ ...s.page, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ background:"#1a1a2e", border:"1px solid #2d2d44", borderRadius:20, padding:"32px 28px", maxWidth:360, textAlign:"center" }}>
+    <div style={{ ...c.page, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ background:"#1a1a2e", border:"1px solid #2d2d44", borderRadius:20, padding:"32px 28px", maxWidth:360, textAlign:"center" as const }}>
         <div style={{ fontSize:40, marginBottom:12 }}>🔐</div>
         <div style={{ fontSize:"1.2rem", fontWeight:900, marginBottom:8 }}>Admin Access</div>
         <div style={{ color:"#6b7280", fontSize:14, marginBottom:24 }}>Sign in to continue</div>
-        <button onClick={() => signInWithPopup(auth, googleProvider)}
-          style={{ display:"flex", alignItems:"center", gap:8, background:"#fff", border:"none",
-            borderRadius:10, color:"#1f2937", fontSize:14, fontWeight:700, padding:"10px 20px",
-            cursor:"pointer", margin:"0 auto" }}>
-          <svg width="18" height="18" viewBox="0 0 48 48">
-            <path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.7 29.3 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.3-.1-2.7-.4-4z"/>
-            <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.1 8.1 2.9l6-6C34.5 5.1 29.5 3 24 3 16.3 3 9.7 7.9 6.3 14.7z"/>
-            <path fill="#4CAF50" d="M24 45c5.3 0 10.2-1.9 13.9-5.1l-6.4-5.4C29.6 36.1 26.9 37 24 37c-5.2 0-9.6-3.3-11.3-8H6.2C9.5 38.9 16.2 45 24 45z"/>
-            <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.6l6.4 5.4C41.2 35.3 44 30 44 24c0-1.3-.1-2.7-.4-4z"/>
-          </svg>
+        <button onClick={()=>signInWithPopup(auth,googleProvider)}
+          style={{ display:"flex", alignItems:"center", gap:8, background:"#fff", border:"none", borderRadius:10, color:"#1f2937", fontSize:14, fontWeight:700, padding:"10px 20px", cursor:"pointer", margin:"0 auto" }}>
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.7 29.3 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.3-.1-2.7-.4-4z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.1 8.1 2.9l6-6C34.5 5.1 29.5 3 24 3 16.3 3 9.7 7.9 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.3 0 10.2-1.9 13.9-5.1l-6.4-5.4C29.6 36.1 26.9 37 24 37c-5.2 0-9.6-3.3-11.3-8H6.2C9.5 38.9 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.6l6.4 5.4C41.2 35.3 44 30 44 24c0-1.3-.1-2.7-.4-4z"/></svg>
           Sign in with Google
         </button>
       </div>
@@ -585,8 +823,8 @@ export default function AdminPage() {
   );
 
   if (!isAdmin) return (
-    <div style={{ ...s.page, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ background:"#1a1a2e", border:"1px solid #2d2d44", borderRadius:20, padding:"32px 28px", maxWidth:360, textAlign:"center" }}>
+    <div style={{ ...c.page, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ background:"#1a1a2e", border:"1px solid #2d2d44", borderRadius:20, padding:"32px 28px", maxWidth:360, textAlign:"center" as const }}>
         <div style={{ fontSize:40, marginBottom:12 }}>🚫</div>
         <div style={{ fontSize:"1.2rem", fontWeight:900, marginBottom:8 }}>Access Denied</div>
         <div style={{ color:"#6b7280", fontSize:14, marginBottom:6 }}>Signed in as {user.email}</div>
@@ -597,34 +835,38 @@ export default function AdminPage() {
   );
 
   return (
-    <div style={{ ...s.page, display:"flex" }}>
-      {/* Sidebar */}
-      <div style={s.sidebar}>
-        <div style={{ padding:"0 16px 20px", borderBottom:"1px solid #1e1e30", marginBottom:8 }}>
-          <div style={{ fontSize:"1rem", fontWeight:900, color:"#f59e0b" }}>⚡ Admin</div>
-          <div style={{ fontSize:11, color:"#4b5563", marginTop:2 }}>TrivQuic</div>
+    <div style={{ ...c.page, display:"flex" }}>
+      <div style={c.sidebar}>
+        <div style={{ padding:"20px 16px 16px", borderBottom:"1px solid #1e1e30" }}>
+          <div style={{ fontSize:"1rem", fontWeight:900, color:"#f59e0b" }}>⚡ TrivQuic Admin</div>
+          <div style={{ fontSize:11, color:"#4b5563", marginTop:2 }}>{user.email}</div>
         </div>
-        {NAV_ITEMS.map(item => (
-          <button key={item.id} onClick={() => setTab(item.id)} style={{
-            width:"100%", background: tab === item.id ? "rgba(245,158,11,0.1)" : "transparent",
-            border:"none", borderLeft: `3px solid ${tab === item.id ? "#f59e0b" : "transparent"}`,
-            color: tab === item.id ? "#f59e0b" : "#6b7280",
-            fontSize:14, fontWeight:700, padding:"11px 16px", cursor:"pointer",
-            textAlign:"left", display:"flex", alignItems:"center", gap:10,
-          }}>
-            <span>{item.icon}</span>{item.label}
-          </button>
-        ))}
-        <div style={{ position:"absolute", bottom:20, padding:"0 16px" }}>
+        <div style={{ flex:1 }}>
+          {NAV.map(item=>(
+            <button key={item.id} onClick={()=>setTab(item.id)} style={{
+              width:"100%", background:tab===item.id?"rgba(245,158,11,0.1)":"transparent",
+              border:"none", borderLeft:`3px solid ${tab===item.id?"#f59e0b":"transparent"}`,
+              color:tab===item.id?"#f59e0b":"#6b7280",
+              fontSize:14, fontWeight:700, padding:"11px 16px", cursor:"pointer",
+              textAlign:"left" as const, display:"flex", alignItems:"center", gap:10,
+            }}>
+              <span>{item.icon}</span>{item.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ padding:"16px" }}>
           <a href="/" style={{ color:"#4b5563", fontSize:12, textDecoration:"none" }}>← Back to game</a>
         </div>
       </div>
 
-      {/* Main content */}
-      <div style={s.main}>
-        {tab === "users" && <UsersPanel />}
-        {tab === "leaderboard" && <LeaderboardPanel />}
-        {tab === "bans" && <BansPanel initUid={initBanUid} />}
+      <div style={c.main}>
+        {tab==="dashboard"     && <StatsPanel />}
+        {tab==="announcements" && <AnnouncementPanel />}
+        {tab==="questions"     && <QuestionsPanel />}
+        {tab==="users"         && <UsersPanel />}
+        {tab==="leaderboard"   && <LeaderboardPanel />}
+        {tab==="reports"       && <ReportsPanel />}
+        {tab==="bans"          && <BansPanel initUid={initBanUid} />}
       </div>
     </div>
   );
