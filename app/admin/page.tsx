@@ -97,7 +97,7 @@ function UsersPanel() {
   }
 
   async function handleEditScore(uid: string) {
-    const score = Math.max(0, Math.min(999999, parseInt(editScore)));
+    const score = parseInt(editScore);
     if (isNaN(score) || score < 0) { flash("Invalid score", "error"); return; }
     // Update all leaderboard entries for this uid
     const snap = await get(ref(db, "leaderboard"));
@@ -245,7 +245,7 @@ function LeaderboardPanel() {
   }
 
   async function handleEditScore(key: string) {
-    const score = Math.max(0, Math.min(999999, parseInt(editScore)));
+    const score = parseInt(editScore);
     if (isNaN(score) || score < 0) { flash("Invalid score", "error"); return; }
     await update(ref(db, `leaderboard/${key}`), { score });
     flash(`Score updated to ${score}`);
