@@ -40,10 +40,15 @@ const CAT_EMOJI: Record<string,string> = { geography:"🗺️", science:"🔬", 
 
 async function logAdminAction(adminUid: string, adminUsername: string, action: string, target?: string, details?: string) {
   try {
-    await fetch(`https://onetap-trivia-default-rtdb.firebaseio.com/adminLog/${Date.now()}_${Math.random().toString(36).slice(2,6)}.json`, {
-      method: "PUT", body: JSON.stringify({ adminUid, adminUsername, action, target: target||null, details: details||null, ts: Date.now(), time: new Date().toLocaleString() }), headers: { "Content-Type": "application/json" },
+    const key = Date.now().toString() + "_" + Math.random().toString(36).slice(2,6);
+    await set(ref(db, "adminLog/" + key), {
+      adminUid, adminUsername, action,
+      target: target || null,
+      details: details || null,
+      ts: Date.now(),
+      time: new Date().toLocaleString(),
     });
-  } catch {}
+  } catch(e) { console.error("logAdminAction failed:", e); }
 }
 
 function BadgeIcon({ badge, size=13 }: { badge?:string|null; size?:number }) {
