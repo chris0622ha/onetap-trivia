@@ -1360,43 +1360,53 @@ export default function Home() {
     return () => { off(warnRef); off(banNotifRef); clearInterval(banCheckInterval); };
   }, [user?.uid, warnModal?.expiresAt]);
 
-  // Request push notification permission + get FCM token
-        try {
-          if ("Notification" in window && Notification.permission === "default") {
-            await Notification.requestPermission();
-          }
-          if (Notification.permission === "granted" && "serviceWorker" in navigator) {
-            // Register SW first, wait for it to be ready
-            await navigator.serviceWorker.register("/api/sw").catch(() => {});
-            const reg = await navigator.serviceWorker.ready;
-            const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
-            if (vapidKey) {
-              const { getMessaging, getToken, isSupported } = await import("firebase/messaging");
-              const supported = await isSupported();
-              if (supported) {
-                const { getApps, initializeApp } = await import("firebase/app");
-                const fbConfig = {
-                  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "placeholder",
-                  authDomain: "onetap-trivia.firebaseapp.com",
-                  databaseURL: "https://onetap-trivia-default-rtdb.firebaseio.com",
-                  projectId: "onetap-trivia",
-                  storageBucket: "onetap-trivia.firebasestorage.app",
-                  messagingSenderId: "986046986694",
-                  appId: "1:986046986694:web:2a4441bf46965ccbb3dac7",
-                };
-                const msgApp = getApps().find((a: any) => a.name === "msg") ?? initializeApp(fbConfig, "msg");
-                const messaging = getMessaging(msgApp);
-                const fcmToken = await getToken(messaging, { vapidKey, serviceWorkerRegistration: reg });
-                if (fcmToken) {
-                  await update(ref(db, `users/${u.uid}`), { fcmToken, notificationsEnabled: true });
-                  console.log("✅ FCM token saved:", fcmToken.slice(0, 20) + "…");
-                } else {
-                  console.warn("⚠️ FCM getToken returned empty");
-                }
+  // ── Request notifications on first visit (logged in or not) ─────────────────
+  useEffect(() => {
+    // Check if we already asked — use localStorage so it persists across sessions
+    const asked = localStorage.getItem("notif_asked");
+    if (asked) return;
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "default") {
+      localStorage.setItem("notif_asked", "1");
+      return;
+    }
+    // Small delay so it doesn't fire immediately on load
+    const timer = setTimeout(async () => {
+      try {
+        const permission = await Notification.requestPermission();
+        localStorage.setItem("notif_asked", "1");
+        if (permission === "granted" && "serviceWorker" in navigator) {
+          await navigator.serviceWorker.register("/api/sw").catch(() => {});
+          const reg = await navigator.serviceWorker.ready;
+          const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+          if (vapidKey) {
+            const { getMessaging, getToken, isSupported } = await import("firebase/messaging");
+            const supported = await isSupported();
+            if (supported) {
+              const { getApps, initializeApp } = await import("firebase/app");
+              const fbConfig = {
+                apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "placeholder",
+                authDomain: "onetap-trivia.firebaseapp.com",
+                databaseURL: "https://onetap-trivia-default-rtdb.firebaseio.com",
+                projectId: "onetap-trivia",
+                storageBucket: "onetap-trivia.firebasestorage.app",
+                messagingSenderId: "986046986694",
+                appId: "1:986046986694:web:2a4441bf46965ccbb3dac7",
+              };
+              const msgApp = getApps().find((a: any) => a.name === "msg") ?? initializeApp(fbConfig, "msg");
+              const messaging = getMessaging(msgApp);
+              const fcmToken = await getToken(messaging, { vapidKey, serviceWorkerRegistration: reg });
+              if (fcmToken && user) {
+                await update(ref(db, `users/${user.uid}`), { fcmToken, notificationsEnabled: true });
               }
             }
           }
-        } catch (fcmErr) { console.error("FCM error:", fcmErr); }
+        }
+      } catch {}
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []); // fires once on mount regardless of login state
+
         // Log login + track duration via periodic writes + onDisconnect
         const loginKey = Date.now().toString();
         const loginTs = Date.now();
