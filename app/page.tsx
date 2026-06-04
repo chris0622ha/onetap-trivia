@@ -13,6 +13,17 @@ import { math } from "./data/math";
 import { sports } from "./data/sports";
 import { entertainment } from "./data/entertainment";
 
+function BadgeIcon({ badge, size=13 }: { badge?:string|null; size?:number }) {
+  if (!badge) return null;
+  if (badge==="star")   return <span title="Loyal Player" style={{fontSize:size}}>⭐</span>;
+  if (badge==="check")  return <span title="Verified" style={{fontSize:size,color:"#3b82f6",fontWeight:900}}>✓</span>;
+  if (badge==="crown")  return <span title="Champion" style={{fontSize:size}}>👑</span>;
+  if (badge==="tester") return <span title="Tester" style={{fontSize:size*0.85,background:"#ca8a04",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:900,fontFamily:"monospace"}}>T</span>;
+  if (badge==="gold")   return <span title="Gold Medal" style={{fontSize:size}}>🥇</span>;
+  if (badge==="silver") return <span title="Silver Medal" style={{fontSize:size}}>🥈</span>;
+  if (badge==="bronze") return <span title="Bronze Medal" style={{fontSize:size}}>🥉</span>;
+  return null;
+}
 const toQ = (arr: any[]) =>
   arr.map((x) => ({ q: x.q, a: x.a, w: x.w ?? x.wrong ?? [], d: x.d ?? 2 }));
 
@@ -42,9 +53,7 @@ function Badges({ userData }: { userData: any }) {
   if (!userData) return null;
   return (
     <span style={{ display:"inline-flex", alignItems:"center", gap:3, marginLeft:4 }}>
-      {userData.badge === "star"  && <span title="Loyal Player" style={{ fontSize:14 }}>⭐</span>}
-      {userData.badge === "check" && <span title="Verified"     style={{ fontSize:13, color:"#3b82f6", fontWeight:900 }}>✓</span>}
-      {userData.badge === "crown" && <span title="Champion"     style={{ fontSize:14 }}>👑</span>}
+      <BadgeIcon badge={userData.badge} size={14} />
     </span>
   );
 }
@@ -474,13 +483,7 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontSize:"1.1rem", fontWeight:900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:4 }}>
               {displayName}
-              {userData?.badge === "star"   && <span title="Loyal Player" style={{ fontSize:16 }}>⭐</span>}
-              {userData?.badge === "check"  && <span title="Verified" style={{ fontSize:14, color:"#3b82f6", fontWeight:900 }}>✓</span>}
-              {userData?.badge === "crown"  && <span title="Champion" style={{ fontSize:16 }}>👑</span>}
-              {userData?.badge === "tester" && <span title="Tester" style={{ fontSize:13, background:"#ca8a04", color:"#fff", borderRadius:4, padding:"1px 6px", fontWeight:900, fontFamily:"monospace" }}>T</span>}
-              {userData?.badge === "gold"   && <span title="Gold Medal" style={{ fontSize:16 }}>🥇</span>}
-              {userData?.badge === "silver" && <span title="Silver Medal" style={{ fontSize:16 }}>🥈</span>}
-              {userData?.badge === "bronze" && <span title="Bronze Medal" style={{ fontSize:16 }}>🥉</span>}
+              <BadgeIcon badge={userData?.badge} size={16} />
             </div>
             <div style={{ fontSize:11, color:"#6b7280", marginTop:2 }}>
               Friend ID: <span style={{ color:"#9ca3af", fontFamily:"monospace", fontSize:11 }}>{user.uid.slice(0,12)}…</span>
@@ -875,13 +878,7 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                     {fp.username}
-                    {fp.badge === "star"   && <span style={{ fontSize:12, marginLeft:3 }}>⭐</span>}
-                    {fp.badge === "check"  && <span style={{ fontSize:11, color:"#3b82f6", fontWeight:900, marginLeft:3 }}>✓</span>}
-                    {fp.badge === "crown"  && <span style={{ fontSize:12, marginLeft:3 }}>👑</span>}
-                    {fp.badge === "tester" && <span style={{ fontSize:10, background:"#ca8a04", color:"#fff", borderRadius:3, padding:"1px 4px", fontWeight:900, fontFamily:"monospace", marginLeft:3 }}>T</span>}
-                    {fp.badge === "gold"   && <span style={{ fontSize:12, marginLeft:3 }}>🥇</span>}
-                    {fp.badge === "silver" && <span style={{ fontSize:12, marginLeft:3 }}>🥈</span>}
-                    {fp.badge === "bronze" && <span style={{ fontSize:12, marginLeft:3 }}>🥉</span>}
+                    <BadgeIcon badge={fp.badge} size={12} />
                   </div>
                   <div style={{ fontSize:11, color:"#6b7280" }}>
                     {fp.status?.preset === "dnd"      && <span style={{ color:"#ef4444" }}>⛔ Do Not Disturb · </span>}
@@ -1788,13 +1785,7 @@ export default function Home() {
               </div>
               <span style={{ color:"#e5e7eb", fontSize:13, fontWeight:600, maxWidth:100, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, display:"flex", alignItems:"center", gap:3 }}>
                 {userData?.username || user.displayName?.split(" ")[0] || user.email?.split("@")[0]}
-                {userData?.badge === "star"   && <span style={{ fontSize:12 }}>⭐</span>}
-                {userData?.badge === "check"  && <span style={{ fontSize:11, color:"#3b82f6", fontWeight:900 }}>✓</span>}
-                {userData?.badge === "crown"  && <span style={{ fontSize:12 }}>👑</span>}
-                {userData?.badge === "tester" && <span style={{ fontSize:10, background:"#ca8a04", color:"#fff", borderRadius:3, padding:"1px 4px", fontWeight:900, fontFamily:"monospace" }}>T</span>}
-                {userData?.badge === "gold"   && <span style={{ fontSize:12 }}>🥇</span>}
-                {userData?.badge === "silver" && <span style={{ fontSize:12 }}>🥈</span>}
-                {userData?.badge === "bronze" && <span style={{ fontSize:12 }}>🥉</span>}
+                <BadgeIcon badge={userData?.badge} size={12} />
               </span>
             </button>
             {(pendingCount + unreadChats) > 0 && (
@@ -1936,13 +1927,7 @@ export default function Home() {
                       <span style={{ fontSize: i < 3 ? 18 : 12, fontWeight:800, color: rankColor, width:28, textAlign:"right", flexShrink:0 }}>{rankLabel}</span>
                       <div>
                         <span style={{ color:"#e5e7eb", fontWeight:600, fontSize:14 }}>{e.name}</span>
-                        {e.badge === "star"   && <span title="Loyal Player" style={{ fontSize:13 }}>⭐</span>}
-                        {e.badge === "check"  && <span title="Verified" style={{ fontSize:12, color:"#3b82f6", fontWeight:900 }}>✓</span>}
-                        {e.badge === "crown"  && <span title="Champion" style={{ fontSize:13 }}>👑</span>}
-                        {e.badge === "tester" && <span title="Tester" style={{ fontSize:11, background:"#ca8a04", color:"#fff", borderRadius:4, padding:"1px 5px", fontWeight:900, fontFamily:"monospace" }}>T</span>}
-                        {e.badge === "gold"   && <span title="Gold Medal" style={{ fontSize:13 }}>🥇</span>}
-                        {e.badge === "silver" && <span title="Silver Medal" style={{ fontSize:13 }}>🥈</span>}
-                        {e.badge === "bronze" && <span title="Bronze Medal" style={{ fontSize:13 }}>🥉</span>}
+                        <BadgeIcon badge={e.badge} size={13} />
                         <div style={{ fontSize:10, color:"#4b5563" }}>
                           {CATEGORY_MAP[e.category]?.emoji} {CATEGORY_MAP[e.category]?.label ?? e.category}
                           {e.roundSize != null ? ` · ${e.roundSize}Q` : ""}
