@@ -220,7 +220,7 @@ function UsernamePickerModal({ user, onDone }: { user: User; onDone: (username: 
 function ProfileModal({ user, userData, onClose, onUserDataChange }: {
   user: User; userData: any; onClose: () => void; onUserDataChange: (d: any) => void;
 }) {
-  const [tab, setTab] = useState<"stats"|"edit"|"status"|"friends">("stats");
+  const [tab, setTab] = useState<"stats"|"edit"|"status"|"prefs"|"friends">("stats");
 
   // Edit tab state
   const [newUsername, setNewUsername] = useState(userData?.username || "");
@@ -256,6 +256,9 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [chatFriend, setChatFriend] = useState<any>(null);
+  const [deleteStep, setDeleteStep] = useState<0|1|2>(0); // 0=none 1=warning 2=confirm
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   // Status tab state
   const [statusPreset, setStatusPreset] = useState(userData?.status?.preset || "online");
@@ -488,6 +491,7 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
           <TabBtn id="stats" label="Stats" />
           <TabBtn id="edit" label="Edit Profile" />
           <TabBtn id="status" label="Status" />
+          <TabBtn id="prefs" label="Preferences" />
           <TabBtn id="friends" label="Friends" badge={incomingRequests.length} />
         </div>
 
@@ -623,6 +627,69 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
               {saving ? "Saving…" : "Save Changes"}
             </button>
             {saveMsg && <div style={{ color:"#10b981", textAlign:"center", marginTop:8, fontWeight:700 }}>{saveMsg}</div>}
+
+            {/* Delete account */}
+            <div style={{ marginTop:24, paddingTop:16, borderTop:"1px solid #2d2d44" }}>
+              {deleteStep === 0 && (
+                <button onClick={() => setDeleteStep(1)} style={{
+                  width:"100%", background:"transparent", border:"1px solid rgba(239,68,68,0.3)",
+                  borderRadius:10, color:"#ef4444", fontSize:13, fontWeight:600,
+                  padding:"10px", cursor:"pointer",
+                }}>Delete account</button>
+              )}
+              {deleteStep === 1 && (
+                <div style={{ background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:12, padding:"16px" }}>
+                  <div style={{ fontSize:14, fontWeight:900, color:"#ef4444", marginBottom:8 }}>⚠️ WARNING</div>
+                  <div style={{ fontSize:13, color:"#d1d5db", lineHeight:1.7, marginBottom:16 }}>
+                    Are you sure you want to delete your account? It will delete all of your data.
+                    <br/><span style={{ color:"#9ca3af", fontSize:12 }}>(You can sign up again with the same Google account — it just won't keep your data.)</span>
+                  </div>
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button onClick={() => setDeleteStep(2)} style={{ flex:1, background:"rgba(239,68,68,0.2)", border:"1px solid #ef4444", borderRadius:8, color:"#ef4444", fontWeight:800, fontSize:13, padding:"10px", cursor:"pointer" }}>
+                      Yes, I'm sure
+                    </button>
+                    <button onClick={() => setDeleteStep(0)} style={{ flex:1, background:"rgba(255,255,255,0.06)", border:"1px solid #2d2d44", borderRadius:8, color:"#9ca3af", fontWeight:600, fontSize:13, padding:"10px", cursor:"pointer" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+              {deleteStep === 2 && (
+                <div style={{ background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:12, padding:"16px" }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:"#ef4444", marginBottom:12 }}>Are you absolutely sure?</div>
+                  <div style={{ fontSize:12, color:"#9ca3af", marginBottom:10 }}>Type <strong style={{ color:"#fff" }}>Yes</strong> to confirm</div>
+                  <input value={deleteConfirmText} onChange={e => setDeleteConfirmText(e.target.value)}
+                    placeholder='Type "Yes" to confirm'
+                    style={{ width:"100%", background:"#0f0f1a", border:`1px solid ${deleteConfirmText === "Yes" ? "#ef4444" : "#2d2d44"}`, borderRadius:8, color:"#fff", fontSize:14, padding:"10px 12px", outline:"none", boxSizing:"border-box" as const, marginBottom:10 }}
+                  />
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button onClick={async () => {
+                      if (deleteConfirmText !== "Yes") return;
+                      setDeleting(true);
+                      try {
+                        await remove(ref(db, `users/${user.uid}`));
+                        await remove(ref(db, `duelChallenges/${user.uid}`));
+                        await remove(ref(db, `friendRequests/${user.uid}`));
+                        const lbSnap = await get(ref(db, "leaderboard"));
+                        if (lbSnap.exists()) {
+                          const upd: any = {};
+                          Object.keys(lbSnap.val()).forEach(k => { if (k.startsWith(user.uid)) upd[`leaderboard/${k}`] = null; });
+                          if (Object.keys(upd).length) await update(ref(db), upd);
+                        }
+                        if (userData?.username) await remove(ref(db, `usernames/${userData.username.toLowerCase()}`));
+                        await signOut(auth);
+                      } catch { setDeleting(false); }
+                    }} disabled={deleteConfirmText !== "Yes" || deleting}
+                      style={{ flex:1, background: deleteConfirmText === "Yes" ? "linear-gradient(135deg,#ef4444,#b91c1c)" : "rgba(239,68,68,0.1)", border:"none", borderRadius:8, color: deleteConfirmText === "Yes" ? "#fff" : "#6b7280", fontWeight:800, fontSize:13, padding:"10px", cursor: deleteConfirmText === "Yes" ? "pointer" : "default" }}>
+                      {deleting ? "Deleting…" : "Delete forever"}
+                    </button>
+                    <button onClick={() => { setDeleteStep(0); setDeleteConfirmText(""); }} style={{ flex:1, background:"rgba(255,255,255,0.06)", border:"1px solid #2d2d44", borderRadius:8, color:"#9ca3af", fontWeight:600, fontSize:13, padding:"10px", cursor:"pointer" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </>)}
 
           {/* STATUS TAB */}
@@ -681,6 +748,28 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
                   </div>
                 );
               })}
+            </div>
+          </>)}
+
+          {/* PREFERENCES TAB */}
+          {tab === "prefs" && (<>
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:11, color:"#6b7280", textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:10 }}>Language</div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                {LANGUAGES.map(lang => (
+                  <button key={lang.code} onClick={() => { applyGoogleTranslate(lang.code); }} style={{
+                    display:"flex", alignItems:"center", gap:8,
+                    background: "rgba(255,255,255,0.04)",
+                    border:`1px solid #2d2d44`,
+                    borderRadius:10, color:"#e5e7eb", fontSize:13, fontWeight:600,
+                    padding:"9px 12px", cursor:"pointer", textAlign:"left" as const,
+                  }}>
+                    <span style={{ fontSize:18 }}>{lang.flag}</span>
+                    <span>{lang.native}</span>
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize:11, color:"#4b5563", marginTop:8, textAlign:"center" as const }}>Powered by Google Translate</div>
             </div>
           </>)}
 
@@ -1204,6 +1293,7 @@ export default function Home() {
   const [reportTarget, setReportTarget] = useState<any>(null);
   const [showLangModal, setShowLangModal] = useState(false);
   const [currentLang, setCurrentLang] = useState("en");
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   const [category, setCategory] = useState("all");
@@ -1574,76 +1664,106 @@ export default function Home() {
 
   // ── AUTH HEADER ──────────────────────────────────────────────────────────────
   const AuthHeader = () => (
-    <div style={{ position:"fixed", top:0, right:0, padding:"12px 16px", zIndex:200, display:"flex", alignItems:"center", gap:10 }}>
-      {authLoading ? null : user ? (
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <button onClick={() => setModal("profile")} title="View your profile"
-            style={{ background:"transparent", border:"none", cursor:"pointer", padding:0, display:"flex", alignItems:"center", gap:8 }}>
-            <div style={{ position:"relative", display:"inline-block" }}>
-              {(userData?.photoURL || user.photoURL) ? (
-                <img src={userData?.photoURL || user.photoURL} alt="" width={32} height={32}
-                  style={{ borderRadius:"50%", border:"2px solid #f59e0b", display:"block" }} />
-              ) : (
-                <div style={{ width:32, height:32, borderRadius:"50%", background:"rgba(245,158,11,0.2)",
-                  border:"2px solid #f59e0b", display:"flex", alignItems:"center", justifyContent:"center",
-                  fontSize:14, fontWeight:900, color:"#f59e0b" }}>
-                  {(userData?.username || user.email || "?")[0].toUpperCase()}
-                </div>
-              )}
-              {(pendingCount + unreadChats) > 0 && (
-                <div style={{ position:"absolute", top:-3, right:-3, width:16, height:16,
-                  borderRadius:"50%", background:"#ef4444", border:"2px solid #0f0f1a",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  fontSize:9, fontWeight:900, color:"#fff", lineHeight:1 }}>
-                  {(pendingCount + unreadChats) > 9 ? "9+" : (pendingCount + unreadChats)}
-                </div>
-              )}
+    <>
+      {/* Language button — top left, fixed */}
+      <button onClick={() => setShowLangModal(true)}
+        style={{ position:"fixed", top:12, left:16, zIndex:200, background:"rgba(255,255,255,0.07)", border:"1px solid #2d2d44", borderRadius:8, color:"#6b7280", fontSize:12, fontWeight:600, padding:"5px 12px", cursor:"pointer" }}>
+        🌐 {LANGUAGES.find(l => l.code === currentLang)?.flag || "🌐"}
+      </button>
+
+      {/* Sign out confirm modal */}
+      {showSignOutConfirm && (
+        <div onClick={() => setShowSignOutConfirm(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background:"#1a1a2e", border:"1px solid #2d2d44", borderRadius:20, padding:"28px 24px", width:"100%", maxWidth:380, color:"#fff", textAlign:"center" as const }}>
+            <div style={{ fontSize:36, marginBottom:12 }}>👋</div>
+            <div style={{ fontSize:"1.2rem", fontWeight:900, marginBottom:10 }}>Sign out?</div>
+            <div style={{ color:"#9ca3af", fontSize:14, lineHeight:1.7, marginBottom:24 }}>
+              Signing out keeps all of your data.<br/>You just need to log back in.
             </div>
-            <span style={{ color:"#e5e7eb", fontSize:13, fontWeight:600, maxWidth:100, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:3 }}>
-              {userData?.username || user.displayName?.split(" ")[0] || user.email?.split("@")[0]}
-              {userData?.badge === "star"  && <span style={{ fontSize:12 }}>⭐</span>}
-              {userData?.badge === "check" && <span style={{ fontSize:11, color:"#3b82f6", fontWeight:900 }}>✓</span>}
-              {userData?.badge === "crown" && <span style={{ fontSize:12 }}>👑</span>}
-            </span>
-          </button>
-          {(pendingCount + unreadChats) > 0 && (
-            <button onClick={async () => {
-              // Clear all unread chat counts
-              if (!user) return;
-              try {
-                const { ref: r, get: g, update: u, off: o } = await import("firebase/database");
-                const snap = await g(r(db, "chats"));
-                if (snap.exists()) {
-                  const updates: any = {};
-                  Object.keys(snap.val()).forEach(key => {
-                    if (key.includes(user.uid)) updates[`chats/${key}/unread/${user.uid}`] = 0;
-                  });
-                  if (Object.keys(updates).length) await u(r(db), updates);
-                }
-              } catch {}
-            }} title="Clear all notifications"
-              style={{ background:"rgba(239,68,68,0.15)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:8, color:"#ef4444", fontSize:12, fontWeight:700, padding:"5px 10px", cursor:"pointer" }}>
-              🔔 Clear
-            </button>
-          )}
-          <button onClick={() => signOut(auth)}
-            style={{ background:"rgba(255,255,255,0.07)", border:"1px solid #2d2d44", borderRadius:8, color:"#9ca3af", fontSize:12, fontWeight:600, padding:"5px 12px", cursor:"pointer" }}>
-            Sign out
-          </button>
+            <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
+              <button onClick={() => { signOut(auth); setShowSignOutConfirm(false); }}
+                style={{ background:"linear-gradient(135deg,#ef4444,#b91c1c)", border:"none", borderRadius:10, color:"#fff", fontWeight:800, fontSize:14, padding:"11px 24px", cursor:"pointer" }}>
+                Yes, sign out
+              </button>
+              <button onClick={() => setShowSignOutConfirm(false)}
+                style={{ background:"rgba(255,255,255,0.07)", border:"1px solid #2d2d44", borderRadius:10, color:"#9ca3af", fontWeight:600, fontSize:14, padding:"11px 24px", cursor:"pointer" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
-      ) : (
-        <button onClick={async () => { try { await signInWithPopup(auth, googleProvider); } catch {} }}
-          style={{ display:"flex", alignItems:"center", gap:8, background:"#fff", border:"none", borderRadius:8, color:"#1f2937", fontSize:13, fontWeight:700, padding:"8px 14px", cursor:"pointer", boxShadow:"0 1px 4px rgba(0,0,0,0.3)" }}>
-          <svg width="16" height="16" viewBox="0 0 48 48">
-            <path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.7 29.3 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.3-.1-2.7-.4-4z"/>
-            <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.1 8.1 2.9l6-6C34.5 5.1 29.5 3 24 3 16.3 3 9.7 7.9 6.3 14.7z"/>
-            <path fill="#4CAF50" d="M24 45c5.3 0 10.2-1.9 13.9-5.1l-6.4-5.4C29.6 36.1 26.9 37 24 37c-5.2 0-9.6-3.3-11.3-8H6.2C9.5 38.9 16.2 45 24 45z"/>
-            <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.6l6.4 5.4C41.2 35.3 44 30 44 24c0-1.3-.1-2.7-.4-4z"/>
-          </svg>
-          Log in / Sign up
-        </button>
       )}
-    </div>
+
+      {/* Right side — profile + actions, fixed, no scroll */}
+      <div style={{ position:"fixed", top:0, right:0, padding:"12px 16px", zIndex:200, display:"flex", alignItems:"center", gap:10 }}>
+        {authLoading ? null : user ? (
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <button onClick={() => setModal("profile")} title="View your profile"
+              style={{ background:"transparent", border:"none", cursor:"pointer", padding:0, display:"flex", alignItems:"center", gap:8 }}>
+              <div style={{ position:"relative", display:"inline-block" }}>
+                {(userData?.photoURL || user.photoURL) ? (
+                  <img src={userData?.photoURL || user.photoURL} alt="" width={32} height={32}
+                    style={{ borderRadius:"50%", border:"2px solid #f59e0b", display:"block" }} />
+                ) : (
+                  <div style={{ width:32, height:32, borderRadius:"50%", background:"rgba(245,158,11,0.2)",
+                    border:"2px solid #f59e0b", display:"flex", alignItems:"center", justifyContent:"center",
+                    fontSize:14, fontWeight:900, color:"#f59e0b" }}>
+                    {(userData?.username || user.email || "?")[0].toUpperCase()}
+                  </div>
+                )}
+                {(pendingCount + unreadChats) > 0 && (
+                  <div style={{ position:"absolute", top:-3, right:-3, width:16, height:16,
+                    borderRadius:"50%", background:"#ef4444", border:"2px solid #0f0f1a",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    fontSize:9, fontWeight:900, color:"#fff", lineHeight:1 }}>
+                    {(pendingCount + unreadChats) > 9 ? "9+" : (pendingCount + unreadChats)}
+                  </div>
+                )}
+              </div>
+              <span style={{ color:"#e5e7eb", fontSize:13, fontWeight:600, maxWidth:100, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, display:"flex", alignItems:"center", gap:3 }}>
+                {userData?.username || user.displayName?.split(" ")[0] || user.email?.split("@")[0]}
+                {userData?.badge === "star"  && <span style={{ fontSize:12 }}>⭐</span>}
+                {userData?.badge === "check" && <span style={{ fontSize:11, color:"#3b82f6", fontWeight:900 }}>✓</span>}
+                {userData?.badge === "crown" && <span style={{ fontSize:12 }}>👑</span>}
+              </span>
+            </button>
+            {(pendingCount + unreadChats) > 0 && (
+              <button onClick={async () => {
+                if (!user) return;
+                try {
+                  const snap = await get(ref(db, "chats"));
+                  if (snap.exists()) {
+                    const updates: any = {};
+                    Object.keys(snap.val()).forEach(key => {
+                      if (key.includes(user.uid)) updates[`chats/${key}/unread/${user.uid}`] = 0;
+                    });
+                    if (Object.keys(updates).length) await update(ref(db), updates);
+                  }
+                } catch {}
+              }} title="Clear all notifications"
+                style={{ background:"rgba(239,68,68,0.15)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:8, color:"#ef4444", fontSize:12, fontWeight:700, padding:"5px 10px", cursor:"pointer" }}>
+                🔔 Clear
+              </button>
+            )}
+            <button onClick={() => setShowSignOutConfirm(true)}
+              style={{ background:"rgba(255,255,255,0.07)", border:"1px solid #2d2d44", borderRadius:8, color:"#9ca3af", fontSize:12, fontWeight:600, padding:"5px 12px", cursor:"pointer" }}>
+              Sign out
+            </button>
+          </div>
+        ) : (
+          <button onClick={async () => { try { await signInWithPopup(auth, googleProvider); } catch {} }}
+            style={{ display:"flex", alignItems:"center", gap:8, background:"#fff", border:"none", borderRadius:8, color:"#1f2937", fontSize:13, fontWeight:700, padding:"8px 14px", cursor:"pointer", boxShadow:"0 1px 4px rgba(0,0,0,0.3)" }}>
+            <svg width="16" height="16" viewBox="0 0 48 48">
+              <path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.7 29.3 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.3-.1-2.7-.4-4z"/>
+              <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.1 8.1 2.9l6-6C34.5 5.1 29.5 3 24 3 16.3 3 9.7 7.9 6.3 14.7z"/>
+              <path fill="#4CAF50" d="M24 45c5.3 0 10.2-1.9 13.9-5.1l-6.4-5.4C29.6 36.1 26.9 37 24 37c-5.2 0-9.6-3.3-11.3-8H6.2C9.5 38.9 16.2 45 24 45z"/>
+              <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.6l6.4 5.4C41.2 35.3 44 30 44 24c0-1.3-.1-2.7-.4-4z"/>
+            </svg>
+            Log in / Sign up
+          </button>
+        )}
+      </div>
+    </>
   );
 
   // ── LEADERBOARD WIDGET ───────────────────────────────────────────────────────
@@ -1979,8 +2099,6 @@ export default function Home() {
           style={{ background:"transparent", border:"1px solid #2d2d44", borderRadius:8, color:"#4b5563", fontSize:12, fontWeight:600, padding:"6px 14px", cursor:"pointer", letterSpacing:"0.04em" }}>Updates</button>
         <a href="/admin"
           style={{ background:"transparent", border:"1px solid #2d2d44", borderRadius:8, color:"#4b5563", fontSize:12, fontWeight:600, padding:"6px 14px", cursor:"pointer", letterSpacing:"0.04em", textDecoration:"none" }}>Admin</a>
-        <button onClick={() => setShowLangModal(true)}
-          style={{ background:"transparent", border:"1px solid #2d2d44", borderRadius:8, color:"#4b5563", fontSize:12, fontWeight:600, padding:"6px 14px", cursor:"pointer", letterSpacing:"0.04em" }}>🌐 Language</button>
         <a href="https://www.youtube.com/watch?v=jNQXAC9IVRw" target="_blank" rel="noreferrer"
           style={{ background:"transparent", border:"1px solid #2d2d44", borderRadius:8, color:"#4b5563", fontSize:12, fontWeight:600, padding:"6px 14px", cursor:"pointer", letterSpacing:"0.04em", textDecoration:"none" }}>Don't click</a>
       </div>
