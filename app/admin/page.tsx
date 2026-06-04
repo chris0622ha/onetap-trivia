@@ -38,11 +38,17 @@ const tag = (col: string) => ({
 const CATEGORIES = ["geography","science","history","math","sports","entertainment"];
 const CAT_EMOJI: Record<string,string> = { geography:"🗺️", science:"🔬", history:"📜", math:"🔢", sports:"⚽", entertainment:"🎬" };
 
-async function logAdminAction(adminUid: string, adminUsername: string, action: string, target?: string, details?: string) {
+// Module-level admin context — set when AdminPage mounts
+let _adminUid = "unknown";
+let _adminUsername = "admin";
+
+async function logAdminAction(action: string, target?: string, details?: string) {
   try {
     const key = Date.now().toString() + "_" + Math.random().toString(36).slice(2,6);
     await set(ref(db, "adminLog/" + key), {
-      adminUid, adminUsername, action,
+      adminUid: _adminUid,
+      adminUsername: _adminUsername,
+      action,
       target: target || null,
       details: details || null,
       ts: Date.now(),
@@ -497,7 +503,7 @@ function UsersPanel() {
     updates[`usernames/${val.toLowerCase()}`] = uid;
     await update(ref(db), updates);
     patchUser(uid, { username:val });
-    logAdminAction("admin", "admin", "CHANGE_USERNAME", uid, val);
+    logAdminAction("CHANGE_USERNAME", uid, val);
     flash(`Username → ${val}`); setEditUsername("");
   }
 
@@ -551,7 +557,7 @@ function UsersPanel() {
     if (!confirm(`Wipe all stats for ${selected?.username}? This cannot be undone.`)) return;
     await update(ref(db, `users/${uid}`), { bestScore:0, bestStreak:0, gamesPlayed:0, totalScore:0, totalCorrect:0, totalQuestions:0, categoryBests:{} });
     patchUser(uid, { bestScore:0, bestStreak:0, gamesPlayed:0 });
-    logAdminAction("admin", "admin", "WIPE_STATS", selected?.username||uid);
+    logAdminAction("WIPE_STATS", selected?.username||uid);
     flash("Stats wiped");
   }
 
@@ -655,7 +661,7 @@ function UsersPanel() {
                       if (Object.keys(updates).length) await update(ref(db), updates);
                     }
                     patchUser(selected.uid,{badge:badgeVal});
-                    logAdminAction("admin", "admin", "SET_BADGE", selected?.username||"?", val);
+                    logAdminAction("SET_BADGE", selected?.username||"?", val);
                     flash(`Badge ${val==="none"?"removed":`set to ${label}`}`);
                   }} style={{ ...btn(), borderColor:selected.badge===(val==="none"?null:val)?col+"88":"#2d2d4488", color:selected.badge===(val==="none"?null:val)?col:"#6b7280", background:selected.badge===(val==="none"?null:val)?`${col}22`:"transparent" }}>
                     {label}
@@ -878,7 +884,7 @@ function BansPanel({ initUid }: { initUid?:string }) {
     await set(ref(db,`bans/${target.uid}`), banData);
     await update(ref(db,`users/${target.uid}`), { banned:true, banExpiresAt:expiresAt });
     setBans(b=>[...b.filter(x=>x.uid!==target.uid),{uid:target.uid,...banData}]);
-    logAdminAction("admin", "admin", "BAN", target.username, `${banType} ${banDays}d`);
+    logAdminAction("BAN", target.username, `${banType} ${banDays}d`);
     flash(`${target.username} ${banType==="temp"?`banned for ${banDays}d`:"permanently banned"}`);
     setBanUid(""); setBanReason(""); setBanDays("1");
   }
@@ -887,7 +893,7 @@ function BansPanel({ initUid }: { initUid?:string }) {
     await remove(ref(db,`bans/${uid}`));
     await update(ref(db,`users/${uid}`),{banned:false,banExpiresAt:null});
     setBans(b=>b.filter(x=>x.uid!==uid));
-    logAdminAction("admin", "admin", "UNBAN", username);
+    logAdminAction("UNBAN", username);
     flash(`${username} unbanned`);
   }
 
@@ -1441,11 +1447,16 @@ function ActivityLogPanel() {
          logs.map((l,i) => (
           <div key={i} style={{...c.row}}>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" as const}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap" as const}}>
                 <span style={{fontWeight:700,fontSize:13,color:ACTION_COLORS[l.action]||"#e5e7eb",background:"rgba(255,255,255,0.06)",borderRadius:4,padding:"1px 6px"}}>{l.action}</span>
-                <span style={{fontSize:13,color:"#9ca3af"}}>by <strong style={{color:"#f59e0b"}}>{l.adminUsername}</strong></span>
-                {l.target && <span style={{fontSize:13,color:"#d1d5db"}}>→ {l.target}</span>}
-                {l.details && <span style={{fontSize:12,color:"#6b7280"}}>({l.details})</span>}
+                <span style={{fontSize:12,color:"#9ca3af"}}>by</span>
+                <span style={{fontWeight:700,fontSize:13,color:"#f59e0b"}}>{l.adminUsername}</span>
+                <span style={{fontSize:10,color:"#4b5563",fontFamily:"monospace"}}>({l.adminUid?.slice(0,10)}…)</span>
+                {l.target && <>
+                  <span style={{fontSize:12,color:"#6b7280"}}>→</span>
+                  <span style={{fontWeight:600,fontSize:13,color:"#d1d5db"}}>{l.target}</span>
+                </>}
+                {l.details && <span style={{fontSize:12,color:"#6b7280",background:"rgba(255,255,255,0.04)",borderRadius:4,padding:"1px 6px"}}>({l.details})</span>}
               </div>
             </div>
             <div style={{fontSize:11,color:"#4b5563",flexShrink:0,marginLeft:10,whiteSpace:"nowrap" as const}}>{l.time}</div>
@@ -1748,14 +1759,29 @@ function SystemPanel() {
           <div style={{textAlign:"center" as const,padding:"20px 0"}}>
             <div style={{fontSize:32,marginBottom:6}}>✅</div>
             <div style={{color:"#10b981",fontSize:14,fontWeight:700}}>No suspicious scores detected</div>
-            <div style={{color:"#374151",fontSize:12,marginTop:4}}>Flags users with impossible scores (e.g. score exceeds 300, perfect score on 20+ questions).</div>
+            <div style={{color:"#374151",fontSize:12,marginTop:4}}>Flags users with impossible accuracy or data corruption.</div>
           </div>
         ) :
           suspScores.map((s,i) => (
-            <div key={i} style={c.row}>
+            <div key={i} style={{...c.row, alignItems:"flex-start"}}>
               <div style={{flex:1}}>
-                <div style={{fontWeight:700,fontSize:13}}>{s.username||s.name||s.uid?.slice(0,10)}</div>
-                <div style={{fontSize:12,color:"#ef4444"}}>{s.reason}</div>
+                <div style={{fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap" as const}}>
+                  {s.username||s.name||"Unknown"}
+                  <span style={{fontSize:10,color:"#4b5563",fontFamily:"monospace"}}>{(s.uid||"").slice(0,12)}…</span>
+                </div>
+                <div style={{fontSize:12,color:"#ef4444",marginTop:2}}>{s.reason}</div>
+              </div>
+              <div style={{display:"flex",gap:6,flexShrink:0,marginLeft:10}}>
+                <button onClick={async()=>{
+                  if(!confirm(`Wipe stats for ${s.username}?`)) return;
+                  await update(ref(db,`users/${s.uid}`),{bestScore:0,bestStreak:0,gamesPlayed:0,totalScore:0,totalCorrect:0,totalQuestions:0,categoryBests:{}});
+                  logAdminAction("WIPE_STATS", s.username, "from suspicious scores panel");
+                  setSuspScores((p:any[])=>p.filter((_:any,j:number)=>j!==i));
+                  flash(`Stats wiped for ${s.username}`);
+                }} style={{...btn("r"),fontSize:12,padding:"4px 10px"}}>Wipe Stats</button>
+                <button onClick={()=>{
+                  setSuspScores((p:any[])=>p.filter((_:any,j:number)=>j!==i));
+                }} style={{...btn(),fontSize:12,padding:"4px 10px"}}>Dismiss</button>
               </div>
             </div>
           ))
@@ -1892,6 +1918,16 @@ export default function AdminPage() {
     window.addEventListener("admin-tab", handler);
     return () => window.removeEventListener("admin-tab", handler);
   }, []);
+
+  // Set module-level admin context for logAdminAction
+  useEffect(() => {
+    if (user) {
+      _adminUid = user.uid;
+      _adminUsername = user.displayName?.split(" ")[0] || user.email?.split("@")[0] || "admin";
+      // Try to get username from Firebase
+      get(ref(db, `users/${user.uid}/username`)).then(s => { if (s.exists()) _adminUsername = s.val(); });
+    }
+  }, [user?.uid]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
