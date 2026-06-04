@@ -403,7 +403,7 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
         await fetch("/api/send-notification", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: tokenSnap.val(), title: "👥 Friend Request", body: `${userData?.username || "Someone"} wants to be friends!`, url: "/" }),
+          body: JSON.stringify({ token: tokenSnap.val(), title: "👥 Friend Request", body: "wants to be friends!", url: "/", sender: userData?.username || "Someone" }),
         });
       }
     } catch {}
@@ -1001,7 +1001,7 @@ function ChatModal({ myUid, myName, friend, onClose }: { myUid:string; myName:st
         await fetch("/api/send-notification", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: tokenSnap.val(), title: `💬 ${myName}`, body: msg, url: "/" }),
+          body: JSON.stringify({ token: tokenSnap.val(), title: `💬 ${myName}`, body: msg, url: "/", sender: myName }),
         });
       }
     } catch {}
@@ -1504,7 +1504,7 @@ export default function Home() {
   }
 
   // Send push to another user via their FCM token
-  async function sendPushToUser(targetUid: string, title: string, body: string, url = "/") {
+  async function sendPushToUser(targetUid: string, title: string, body: string, url = "/", sender?: string) {
     try {
       const snap = await get(ref(db, `users/${targetUid}/fcmToken`));
       if (!snap.exists()) return;
@@ -1512,7 +1512,7 @@ export default function Home() {
       await fetch("/api/send-notification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, title, body, url }),
+        body: JSON.stringify({ token, title, body, url, sender }),
       });
     } catch {}
   }
