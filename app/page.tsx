@@ -1991,7 +1991,14 @@ export default function Home() {
         </div>
         <input
           value={name}
-          onChange={(e) => { setName(e.target.value); try { localStorage.setItem("onetap_name", e.target.value); } catch {} }}
+          onChange={(e) => {
+            const val = e.target.value;
+            // Block emoji characters (faces, hands, symbols, crown, checkmark etc.)
+            const emojiRegex = /[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}]/u;
+            if (emojiRegex.test(val)) return;
+            setName(val);
+            try { localStorage.setItem("onetap_name", val); } catch {}
+          }}
           placeholder={userData?.username || "Enter your name..."}
           style={{ width:"100%", background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:10, color:"#fff", fontSize:16, padding:"12px 16px", outline:"none", boxSizing:"border-box" }}
         />
