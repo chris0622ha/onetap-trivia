@@ -118,7 +118,7 @@ export const history = [
   { q: "When was the Rwandan Genocide?", a: "1994", w: ["1990", "1998", "1992"] },
   { q: "What was the fall of Constantinople?", a: "Ottoman conquest of Byzantine capital in 1453", w: ["Fall of Roman Empire", "Crusader sack of 1204", "Greek independence"] },
   { q: "Who conquered Constantinople in 1453?", a: "Mehmed II (Ottoman)", w: ["Saladin", "Timur", "Suleiman I"] },
-  { q: "What was the Seven Years War?", a: "Global conflict 1756-1763", w: ["American Revolutionary War", "Napoleonic Wars", "War of Spanish Succession"] },,
+  { q: "What was the Seven Years War?", a: "Global conflict 1756-1763", w: ["American Revolutionary War", "Napoleonic Wars", "War of Spanish Succession"] },
   { q: "Who was the first President of the United States?", a: "George Washington", w: ["John Adams","Thomas Jefferson","Benjamin Franklin"], d: 1 },
   { q: "In what year did World War II end?", a: "1945", w: ["1944","1946","1943"], d: 1 },
   { q: "Who built the pyramids at Giza?", a: "Ancient Egyptians", w: ["Romans","Greeks","Persians"], d: 1 },
