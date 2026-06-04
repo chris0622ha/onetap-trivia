@@ -1993,15 +1993,9 @@ export default function Home() {
         <input
           value={name}
           onChange={(e) => {
-            const val = e.target.value;
-            const emojiRegex = /[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}]/u;
-            if (emojiRegex.test(val)) {
-              setNameError("That character is not allowed. Try a different name.");
-              return;
-            }
             setNameError("");
-            setName(val);
-            try { localStorage.setItem("onetap_name", val); } catch {}
+            setName(e.target.value);
+            try { localStorage.setItem("onetap_name", e.target.value); } catch {}
           }}
           placeholder={userData?.username || "Enter your name..."}
           style={{ width:"100%", background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:10, color:"#fff", fontSize:16, padding:"12px 16px", outline:"none", boxSizing:"border-box" }}
