@@ -1431,6 +1431,135 @@ function ActivityLogPanel() {
   );
 }
 
+
+// ── IMPERSONATE VIEW ─────────────────────────────────────────────────────────
+function ImpersonateView({ userData, onClose }: { userData: any; onClose: () => void }) {
+  const CAT_EMOJI: Record<string,string> = { geography:"🗺️", science:"🔬", history:"📜", math:"🔢", sports:"⚽", entertainment:"🎬" };
+
+  return (
+    <div style={{ marginTop:12 }}>
+      {/* Admin banner */}
+      <div style={{ background:"rgba(239,68,68,0.15)", border:"1px solid rgba(239,68,68,0.5)", borderRadius:10, padding:"8px 14px", marginBottom:16, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <span style={{ color:"#ef4444", fontWeight:700, fontSize:13 }}>👁️ ADMIN PREVIEW — {userData.username}</span>
+        <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#ef4444", fontSize:18, cursor:"pointer" }}>×</button>
+      </div>
+
+      {/* Profile card */}
+      <div style={{ background:"#0f0f1a", borderRadius:14, padding:"16px", marginBottom:12, display:"flex", alignItems:"center", gap:14 }}>
+        {userData.photoURL
+          ? <img src={userData.photoURL} alt="" width={56} height={56} style={{ borderRadius:"50%", border:"3px solid #f59e0b" }} />
+          : <div style={{ width:56, height:56, borderRadius:"50%", background:"rgba(245,158,11,0.2)", border:"3px solid #f59e0b", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:900, color:"#f59e0b" }}>{(userData.username||"?")[0].toUpperCase()}</div>
+        }
+        <div style={{ flex:1 }}>
+          <div style={{ fontWeight:900, fontSize:"1.1rem", display:"flex", alignItems:"center", gap:6 }}>
+            {userData.username} <BadgeIcon badge={userData.badge} size={16} />
+          </div>
+          {userData.status?.preset && userData.status.preset !== "online" && (
+            <div style={{ fontSize:12, color:"#6b7280", marginTop:2 }}>
+              {userData.status.preset === "dnd" && "⛔ Do Not Disturb"}
+              {userData.status.preset === "sleeping" && "😴 Sleeping"}
+              {userData.status.preset === "focused" && "🎯 Focused"}
+              {userData.status.preset === "custom" && `✏️ ${userData.status.custom}`}
+            </div>
+          )}
+          <div style={{ fontSize:12, color:"#6b7280", marginTop:2 }}>
+            {userData.isAdmin && <span style={{ color:"#f59e0b", marginRight:6 }}>⚡ Admin</span>}
+            Joined: {userData.loginHistory ? Object.values(userData.loginHistory as any).sort((a:any,b:any)=>a.ts-b.ts)[0] ? (Object.values(userData.loginHistory as any).sort((a:any,b:any)=>a.ts-b.ts)[0] as any).loginAt : "Unknown" : "Unknown"}
+          </div>
+        </div>
+      </div>
+
+      {/* Stats grid */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:12 }}>
+        {[
+          ["Best Score", userData.bestScore||0, "#f59e0b"],
+          ["Games", userData.gamesPlayed||0, "#10b981"],
+          ["Best Streak", userData.bestStreak||0, "#ef4444"],
+          ["Correct", userData.totalCorrect||0, "#6366f1"],
+          ["Accuracy", userData.totalQuestions ? Math.round((userData.totalCorrect||0)/userData.totalQuestions*100)+"%" : "—", "#a855f7"],
+          ["Duels", userData.duelsPlayed||0, "#60a5fa"],
+        ].map(([l,v,col]) => (
+          <div key={l as string} style={{ background:"#0f0f1a", borderRadius:10, padding:"10px", textAlign:"center" as const }}>
+            <div style={{ fontSize:18, fontWeight:900, color:col as string }}>{v as any}</div>
+            <div style={{ fontSize:10, color:"#6b7280", marginTop:2 }}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Duel stats */}
+      {(userData.duelsPlayed||0) > 0 && (
+        <div style={{ background:"#0f0f1a", borderRadius:12, padding:"12px 16px", marginBottom:12 }}>
+          <div style={{ fontSize:12, color:"#6b7280", marginBottom:8, textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>Duel Record</div>
+          <div style={{ display:"flex", gap:16 }}>
+            {[["Wins",userData.duelWins||0,"#10b981"],["Losses",userData.duelLosses||0,"#ef4444"],["Draws",userData.duelDraws||0,"#6b7280"]].map(([l,v,col])=>(
+              <div key={l as string} style={{ textAlign:"center" as const }}>
+                <div style={{ fontSize:20, fontWeight:900, color:col as string }}>{v as number}</div>
+                <div style={{ fontSize:11, color:"#4b5563" }}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Category bests */}
+      {userData.categoryBests && Object.keys(userData.categoryBests).length > 0 && (
+        <div style={{ background:"#0f0f1a", borderRadius:12, padding:"12px 16px", marginBottom:12 }}>
+          <div style={{ fontSize:12, color:"#6b7280", marginBottom:8, textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>Category Bests</div>
+          {Object.entries(userData.categoryBests as Record<string,any>).map(([cat, data]: [string, any]) => (
+            <div key={cat} style={{ display:"flex", justifyContent:"space-between", padding:"4px 0", borderBottom:"1px solid #1e1e30", fontSize:13 }}>
+              <span>{CAT_EMOJI[cat]||"❓"} {cat}</span>
+              <span style={{ color:"#f59e0b", fontWeight:700 }}>{data.score || data}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Friends */}
+      {userData._friends && userData._friends.length > 0 && (
+        <div style={{ background:"#0f0f1a", borderRadius:12, padding:"12px 16px", marginBottom:12 }}>
+          <div style={{ fontSize:12, color:"#6b7280", marginBottom:8, textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>Friends ({userData._friends.length})</div>
+          {userData._friends.map((f:any) => (
+            <div key={f.uid} style={{ display:"flex", alignItems:"center", gap:10, padding:"6px 0", borderBottom:"1px solid #1e1e30" }}>
+              <Avatar src={f.photoURL} name={f.username||"?"} size={28} />
+              <span style={{ fontWeight:600, fontSize:13 }}>{f.username}</span>
+              <BadgeIcon badge={f.badge} size={12} />
+              {userData.mutedUids && Object.values(userData.mutedUids as any).includes(f.uid) && (
+                <span style={{ fontSize:11, color:"#6b7280", marginLeft:"auto" }}>🔕 muted</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Notifications */}
+      <div style={{ background:"#0f0f1a", borderRadius:12, padding:"12px 16px", marginBottom:12, fontSize:13 }}>
+        <div style={{ fontSize:12, color:"#6b7280", marginBottom:6, textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>Notifications</div>
+        <div style={{ color: userData.fcmToken ? "#10b981" : "#ef4444" }}>
+          {userData.fcmToken ? "✅ Push enabled" : "❌ No FCM token — push disabled"}
+        </div>
+        <div style={{ color: userData.status?.notif === false ? "#ef4444" : "#10b981", marginTop:4 }}>
+          {userData.status?.notif === false ? "⛔ Status blocks notifications" : "✅ Status allows notifications"}
+        </div>
+        {userData.globalMuted && <div style={{ color:"#ef4444", marginTop:4 }}>🔇 Globally muted from chat</div>}
+      </div>
+
+      {/* Username changes left */}
+      <div style={{ background:"#0f0f1a", borderRadius:12, padding:"12px 16px", fontSize:13 }}>
+        <div style={{ display:"flex", justifyContent:"space-between" }}>
+          <span style={{ color:"#6b7280" }}>Username changes left</span>
+          <span style={{ fontWeight:700, color: (userData.usernameChangesLeft||0) > 0 ? "#f59e0b" : "#ef4444" }}>
+            {userData.usernameChangesLeft ?? 3}
+          </span>
+        </div>
+        <div style={{ display:"flex", justifyContent:"space-between", marginTop:6 }}>
+          <span style={{ color:"#6b7280" }}>Admin access</span>
+          <span style={{ fontWeight:700, color: userData.isAdmin ? "#f59e0b" : "#6b7280" }}>{userData.isAdmin ? "Yes ⚡" : "No"}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── SYSTEM PANEL ──────────────────────────────────────────────────────────────
 function SystemPanel() {
   const [stats, setStats] = useState<any>(null);
@@ -1494,10 +1623,29 @@ function SystemPanel() {
   }
 
   async function loadImpersonate() {
-    if (!impersonateUid.trim()) return;
-    const snap = await get(ref(db, `users/${impersonateUid.trim()}`));
+    const q = impersonateUid.trim();
+    if (!q) return;
+    // Try as UID first
+    let snap = await get(ref(db, `users/${q}`));
+    if (!snap.exists()) {
+      // Try username lookup
+      const uidSnap = await get(ref(db, `usernames/${q.toLowerCase()}`));
+      if (uidSnap.exists()) snap = await get(ref(db, `users/${uidSnap.val()}`));
+    }
     if (!snap.exists()) { setImpersonateUser({error:"User not found"}); return; }
-    setImpersonateUser({uid: impersonateUid.trim(), ...snap.val()});
+    const uid = q.length > 20 ? q : (await get(ref(db, `usernames/${q.toLowerCase()}`))).val() || q;
+    // Load friends
+    const userData = snap.val();
+    const friendIds: string[] = userData.friendIds ? Object.values(userData.friendIds) : [];
+    const friends = await Promise.all(
+      friendIds.slice(0,10).map((id:string) => get(ref(db,`users/${id}`)).then(s => s.exists()?{uid:id,...s.val()}:null))
+    );
+    // Load leaderboard entries
+    const lbSnap = await get(ref(db,"leaderboard"));
+    const lbEntries = lbSnap.exists()
+      ? Object.values(lbSnap.val() as any).filter((e:any) => e.uid === snap.ref.key || Object.keys(lbSnap.val()).some(k=>k.startsWith((snap.ref.key||"")+"_")))
+      : [];
+    setImpersonateUser({ uid: snap.ref.key, ...userData, _friends: friends.filter(Boolean), _lbEntries: lbEntries });
   }
 
   const CAT_EMOJI: Record<string,string> = {geography:"🗺️",science:"🔬",history:"📜",math:"🔢",sports:"⚽",entertainment:"🎬"};
@@ -1564,36 +1712,20 @@ function SystemPanel() {
         }
       </div>
 
-      {/* Impersonate / User View */}
+      {/* View As User */}
       <div style={c.card}>
-        <div style={c.h2}>👁️ View User Data (Read-Only)</div>
-        <p style={{color:"#9ca3af",fontSize:13,marginBottom:12}}>Enter a UID to inspect a user's full data as stored in Firebase.</p>
+        <div style={c.h2}>👁️ View As User</div>
+        <p style={{color:"#9ca3af",fontSize:13,marginBottom:12}}>Enter a UID or username to open a full read-only preview of what that user sees.</p>
         <div style={{display:"flex",gap:8,marginBottom:12}}>
           <input value={impersonateUid} onChange={e=>setImpersonateUid(e.target.value)}
-            placeholder="User UID" style={{...c.input,marginBottom:0,flex:1}} />
+            placeholder="UID or username" style={{...c.input,marginBottom:0,flex:1}}
+            onKeyDown={e=>e.key==="Enter"&&loadImpersonate()} />
           <button onClick={loadImpersonate} style={btn("g")}>Load</button>
         </div>
         {impersonateUser && (
           impersonateUser.error
             ? <div style={{color:"#ef4444"}}>{impersonateUser.error}</div>
-            : <div style={{background:"#0f0f1a",borderRadius:10,padding:"14px",fontSize:12,fontFamily:"monospace",maxHeight:300,overflowY:"auto" as const,color:"#d1d5db",whiteSpace:"pre-wrap" as const}}>
-                {JSON.stringify({
-                  uid: impersonateUser.uid,
-                  username: impersonateUser.username,
-                  displayName: impersonateUser.displayName,
-                  badge: impersonateUser.badge,
-                  gamesPlayed: impersonateUser.gamesPlayed,
-                  bestScore: impersonateUser.bestScore,
-                  bestStreak: impersonateUser.bestStreak,
-                  duelsPlayed: impersonateUser.duelsPlayed,
-                  duelWins: impersonateUser.duelWins,
-                  status: impersonateUser.status,
-                  fcmToken: impersonateUser.fcmToken ? impersonateUser.fcmToken.slice(0,20)+"…" : null,
-                  usernameChangesLeft: impersonateUser.usernameChangesLeft,
-                  isAdmin: impersonateUser.isAdmin,
-                  mutedUids: impersonateUser.mutedUids,
-                }, null, 2)}
-              </div>
+            : <ImpersonateView userData={impersonateUser} onClose={()=>setImpersonateUser(null)} />
         )}
       </div>
     </div>
