@@ -3,11 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 const PROJECT_ID = "onetap-trivia";
 const FCM_URL = `https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`;
 
+function toBase64Url(str: string): string {
+  return btoa(str).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
 async function getAccessToken(): Promise<string> {
   const key = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY!);
   const now = Math.floor(Date.now() / 1000);
-  const header = btoa(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const payload = btoa(JSON.stringify({
+  const header = toBase64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const payload = toBase64Url(JSON.stringify({
     iss: key.client_email,
     scope: "https://www.googleapis.com/auth/firebase.messaging",
     aud: "https://oauth2.googleapis.com/token",
@@ -16,10 +20,9 @@ async function getAccessToken(): Promise<string> {
   }));
   const signingInput = `${header}.${payload}`;
 
-  // Import the private key
   const pemKey = key.private_key.replace(/\\n/g, "\n");
   const keyData = pemKey.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\n/g, "");
-  const binaryKey = Uint8Array.from(atob(keyData), c => c.charCodeAt(0));
+  const binaryKey = Uint8Array.from(atob(keyData), (c) => c.charCodeAt(0));
   const cryptoKey = await crypto.subtle.importKey(
     "pkcs8", binaryKey.buffer,
     { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
@@ -29,7 +32,8 @@ async function getAccessToken(): Promise<string> {
     "RSASSA-PKCS1-v1_5", cryptoKey,
     new TextEncoder().encode(signingInput)
   );
-  const jwt = `${signingInput}.${btoa(String.fromCharCode(...new Uint8Array(signature)))}`;
+  const sig = toBase64Url(String.fromCharCode(...new Uint8Array(signature)));
+  const jwt = `${signingInput}.${sig}`;
 
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -37,6 +41,7 @@ async function getAccessToken(): Promise<string> {
     body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
   });
   const tokenData = await tokenRes.json();
+  if (tokenData.error) throw new Error(`OAuth: ${tokenData.error} - ${tokenData.error_description}`);
   return tokenData.access_token;
 }
 
@@ -59,7 +64,13 @@ export async function POST(req: NextRequest) {
           token,
           notification: { title, body },
           webpush: {
-            notification: { title, body, icon: "/favicon.ico", badge: "/favicon.ico", vibrate: [100, 50, 100] },
+            notification: {
+              title, body,
+              icon: "/favicon.ico",
+              badge: "/favicon.ico",
+              vibrate: [100, 50, 100],
+              requireInteraction: false,
+            },
             fcm_options: { link: url || "/" },
           },
         },
