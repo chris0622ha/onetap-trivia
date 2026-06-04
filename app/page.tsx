@@ -1343,14 +1343,16 @@ export default function Home() {
             await Notification.requestPermission();
           }
           if (Notification.permission === "granted" && "serviceWorker" in navigator) {
+            // Register SW first, wait for it to be ready
+            await navigator.serviceWorker.register("/api/sw").catch(() => {});
             const reg = await navigator.serviceWorker.ready;
             const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
             if (vapidKey) {
               const { getMessaging, getToken, isSupported } = await import("firebase/messaging");
               const supported = await isSupported();
               if (supported) {
-                const { initializeApp, getApps } = await import("firebase/app");
-                const msgApp = getApps().find((a: any) => a.name === "msg") ?? (await import("firebase/app")).initializeApp({
+                const { getApps, initializeApp } = await import("firebase/app");
+                const fbConfig = {
                   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "placeholder",
                   authDomain: "onetap-trivia.firebaseapp.com",
                   databaseURL: "https://onetap-trivia-default-rtdb.firebaseio.com",
@@ -1358,14 +1360,20 @@ export default function Home() {
                   storageBucket: "onetap-trivia.firebasestorage.app",
                   messagingSenderId: "986046986694",
                   appId: "1:986046986694:web:2a4441bf46965ccbb3dac7",
-                }, "msg");
+                };
+                const msgApp = getApps().find((a: any) => a.name === "msg") ?? initializeApp(fbConfig, "msg");
                 const messaging = getMessaging(msgApp);
                 const fcmToken = await getToken(messaging, { vapidKey, serviceWorkerRegistration: reg });
-                if (fcmToken) await update(ref(db, `users/${u.uid}`), { fcmToken });
+                if (fcmToken) {
+                  await update(ref(db, `users/${u.uid}`), { fcmToken, notificationsEnabled: true });
+                  console.log("✅ FCM token saved:", fcmToken.slice(0, 20) + "…");
+                } else {
+                  console.warn("⚠️ FCM getToken returned empty");
+                }
               }
             }
           }
-        } catch {}
+        } catch (fcmErr) { console.error("FCM error:", fcmErr); }
         // Log login + track duration via periodic writes + onDisconnect
         const loginKey = Date.now().toString();
         const loginTs = Date.now();
@@ -1730,7 +1738,7 @@ export default function Home() {
     <>
       {/* Language button — top left, fixed */}
       <button onClick={() => setShowLangModal(true)}
-        style={{ position:"fixed", top:12, left:16, zIndex:200, background:"rgba(255,255,255,0.07)", border:"1px solid #2d2d44", borderRadius:8, color:"#6b7280", fontSize:12, fontWeight:600, padding:"5px 12px", cursor:"pointer" }}>
+        style={{ position:"fixed", top:12, left:16, zIndex:200, background:"rgba(15,15,26,0.92)", backdropFilter:"blur(8px)", border:"1px solid #2d2d44", borderRadius:8, color:"#9ca3af", fontSize:12, fontWeight:600, padding:"5px 12px", cursor:"pointer" }}>
         🌐 {LANGUAGES.find(l => l.code === currentLang)?.flag || "🌐"}
       </button>
 
@@ -1758,7 +1766,7 @@ export default function Home() {
       )}
 
       {/* Right side — profile + actions, fixed, no scroll */}
-      <div style={{ position:"fixed", top:0, right:0, padding:"12px 16px", zIndex:200, display:"flex", alignItems:"center", gap:10 }}>
+      <div style={{ position:"fixed", top:0, right:0, padding:"12px 16px", zIndex:200, display:"flex", alignItems:"center", gap:10, background:"rgba(15,15,26,0.92)", backdropFilter:"blur(8px)" }}>
         {authLoading ? null : user ? (
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <button onClick={() => setModal("profile")} title="View your profile"
@@ -1974,7 +1982,7 @@ export default function Home() {
   );
 
   if (screen === "home") return (
-    <div style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"20px 16px", color:"#fff" }}>
+    <div style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"72px 16px 20px", color:"#fff" }}>
       <AuthHeader />
       {announcement && (
         <div style={{ width:"100%", maxWidth: isMobile ? 460 : 860, background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.3)", borderRadius:12, padding:"12px 16px", marginBottom:16, display:"flex", alignItems:"flex-start", gap:10 }}>
@@ -2269,7 +2277,7 @@ export default function Home() {
           return (
             <button key={i} onClick={() => handleAnswer(opt, questions, qIndex)} disabled={!!selected}
               className={selected === opt ? anim : ""}
-              style={{ background: showResult && isCorrect ? "#064e3b" : showResult && isWrong ? "#450a0a" : "#1a1a2e", border:`2px solid ${showResult && isCorrect ? "#10b981" : showResult && isWrong ? "#ef4444" : "#2d2d44"}`, borderRadius:14, color: showResult && isCorrect ? "#10b981" : showResult && isWrong ? "#ef4444" : "#e5e7eb", fontSize:"1rem", fontWeight:700, padding:"20px 16px", cursor: selected ? "default" : "pointer", transition:"all 0.2s", lineHeight:1.3 }}>
+              style={{ background: showResult && isCorrect ? "#064e3b" : showResult && isWrong ? "#450a0a" : "#1a1a2e", border:`2px solid ${showResult && isCorrect ? "#10b981" : showResult && isWrong ? "#ef4444" : "#2d2d44"}`, borderRadius:14, color: showResult && isCorrect ? "#10b981" : showResult && isWrong ? "#ef4444" : "#e5e7eb", fontSize:"1rem", fontWeight:700, padding:"72px 16px 20px", cursor: selected ? "default" : "pointer", transition:"all 0.2s", lineHeight:1.3 }}>
               {opt}
             </button>
           );
