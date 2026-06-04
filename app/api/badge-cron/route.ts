@@ -56,10 +56,10 @@ export async function GET(req: NextRequest) {
       let newLevel = currentLevel;
 
       // Earn
-      if (uniqueDays >= 6)      newLevel = 4; // Gold
-      else if (uniqueDays >= 5) newLevel = Math.max(newLevel, 3); // Silver
-      else if (uniqueDays >= 4) newLevel = Math.max(newLevel, 2); // Bronze
-      else if (uniqueDays >= 3) newLevel = Math.max(newLevel, 1); // Star
+      if (uniqueDays >= 5)      newLevel = 4; // Gold
+      else if (uniqueDays >= 4) newLevel = Math.max(newLevel, 3); // Silver
+      else if (uniqueDays >= 3) newLevel = Math.max(newLevel, 2); // Bronze
+      else if (uniqueDays >= 2) newLevel = Math.max(newLevel, 1); // Star
 
       // Demote for inactivity
       if (daysSince >= 10 && newLevel > 0) newLevel = newLevel - 1;
