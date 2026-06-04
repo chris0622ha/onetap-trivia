@@ -1626,12 +1626,14 @@ function SystemPanel() {
       const lbEntries = lb.exists() ? Object.values(lb.val() as any) : [];
       // Suspicious scores: perfect score (score = roundSize) in very short time, or score > possible
       const susp: any[] = [];
+      // Flag accounts with impossible accuracy (more correct than questions played)
       (users as any[]).forEach((usr:any) => {
-        if (usr.bestScore > 30 * 10) susp.push({...usr, reason:`Score ${usr.bestScore} exceeds max possible (300)`});
-      });
-      (lbEntries as any[]).forEach((e:any) => {
-        if (e.score === e.roundSize * 10 && e.roundSize >= 20) {
-          susp.push({...e, reason:`Perfect score ${e.score} on ${e.roundSize}Q`});
+        if (usr.totalQuestions > 0 && usr.totalCorrect > usr.totalQuestions) {
+          susp.push({...usr, reason:`Correct (${usr.totalCorrect}) > total questions (${usr.totalQuestions})`});
+        }
+        // Flag accounts with games played but zero questions
+        if ((usr.gamesPlayed||0) > 5 && (usr.totalQuestions||0) === 0) {
+          susp.push({...usr, reason:`${usr.gamesPlayed} games played but 0 questions recorded`});
         }
       });
       setStats({
