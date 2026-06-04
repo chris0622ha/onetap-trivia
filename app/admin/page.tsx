@@ -880,6 +880,8 @@ function BansPanel({ initUid }: { initUid?:string }) {
   const [banAmount, setBanAmount] = useState("1");
   const [banSubject, setBanSubject] = useState("");
   const [search, setSearch] = useState("");
+  const [activeSort, setActiveSort] = useState<"recent"|"az"|"za">("recent");
+  const [prevSort, setPrevSort] = useState<"recent"|"az"|"za">("recent");
   const [sortBy, setSortBy] = useState<"recent"|"warned"|"banned">("recent");
   const { msg, flash } = useFlash();
 
@@ -1061,39 +1063,83 @@ function BansPanel({ initUid }: { initUid?:string }) {
         </div>
       </div>
 
-      <div style={c.card}>
-        <div style={c.h2}>Active Bans</div>
-        <div style={{ display:"flex", gap:8, marginBottom:8, flexWrap:"wrap" as const }}>
-          {(["recent","warned","banned"] as const).map(s=>(
-            <button key={s} onClick={()=>setSortBy(s)} style={{ ...btn(sortBy===s?"y":""), fontSize:12, opacity:sortBy===s?1:0.6 }}>
-              {s==="recent"?"🕐 Recent":s==="warned"?"⚠️ Most Warned":"🔨 Most Banned"}
-            </button>
-          ))}
+      {(()=>{
+        const now = Date.now();
+        const activeBans = bans.filter(b => b.type==="permanent" || !b.expiresAt || b.expiresAt > now);
+        const prevBans = bans.filter(b => b.type!=="permanent" && b.expiresAt && b.expiresAt <= now);
+        const applySort = (arr: any[], sort: string) =>
+          [...arr].filter(b => !search || b.username?.toLowerCase().includes(search.toLowerCase()))
+          .sort((a,b2) =>
+            sort==="az" ? (a.username||"").localeCompare(b2.username||"") :
+            sort==="za" ? (b2.username||"").localeCompare(a.username||"") :
+            (b2.bannedAt||0)-(a.bannedAt||0)
+          );
+        const SortBtns = ({sort, setSort}: {sort:string, setSort:(s:any)=>void}) => (
+          <div style={{ display:"flex", gap:6, marginBottom:8, flexWrap:"wrap" as const }}>
+            {[["recent","🕐 Recent"],["az","A→Z"],["za","Z→A"]].map(([s,l])=>(
+              <button key={s} onClick={()=>setSort(s)} style={{ ...btn(sort===s?"y":""), fontSize:11, opacity:sort===s?1:0.6 }}>{l}</button>
+            ))}
+          </div>
+        );
+        const getTimeLeft = (b: any) => {
+          if (!b.expiresAt) return null;
+          const ms = b.expiresAt - now;
+          if (ms <= 0) return "Expired";
+          if (ms < 3600000) return `${Math.ceil(ms/60000)}m left`;
+          if (ms < 86400000) return `${Math.ceil(ms/3600000)}h left`;
+          return `${Math.ceil(ms/86400000)}d left`;
+        };
+        return (<>
+        <div style={c.card}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+            <div style={c.h2}>Active Bans ({activeBans.length})</div>
+          </div>
+          <SortBtns sort={activeSort} setSort={setActiveSort} />
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search…" style={c.input} />
+          {applySort(activeBans, activeSort).length===0 ? <div style={{ color:"#4b5563" }}>No active bans</div> :
+            applySort(activeBans, activeSort).map(b=>{
+              const tl = getTimeLeft(b);
+              return (
+                <div key={b.uid} style={c.row}>
+                  <Avatar src={b.photoURL} name={b.username||"?"} size={36} />
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" as const }}>
+                      <span style={{ fontWeight:700 }}>{b.username}</span>
+                      {b.type==="permanent" ? <span style={tag("239,68,68")}>permanent</span>
+                        : <span style={tag("245,158,11")}>{tl}</span>}
+                    </div>
+                    {b.subject && <div style={{ fontSize:11, color:"#f59e0b" }}>Subject: {b.subject}</div>}
+                    <div style={{ fontSize:11, color:"#6b7280" }}>{b.reason}</div>
+                    <div style={{ fontSize:10, color:"#4b5563" }}>{new Date(b.bannedAt).toLocaleString()}</div>
+                  </div>
+                  <button onClick={()=>handleUnban(b.uid,b.username)} style={btn("g")}>Unban</button>
+                </div>
+              );
+            })
+          }
         </div>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search…" style={c.input} />
-        {filtered.length===0 ? <div style={{ color:"#4b5563" }}>No bans</div> :
-          filtered.map(b=>{
-            const isExpired = b.expiresAt && b.expiresAt<Date.now();
-            const daysLeft = b.expiresAt ? Math.max(0,Math.ceil((b.expiresAt-Date.now())/86400000)) : null;
-            return (
-              <div key={b.uid} style={c.row}>
+        {prevBans.length > 0 && (
+          <div style={c.card}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+              <div style={c.h2}>Previous Bans ({prevBans.length})</div>
+            </div>
+            <SortBtns sort={prevSort} setSort={setPrevSort} />
+            {applySort(prevBans, prevSort).map(b=>(
+              <div key={(b.uid||"")+(b.bannedAt||"")} style={{ ...c.row, opacity:0.65 }}>
                 <Avatar src={b.photoURL} name={b.username||"?"} size={36} />
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                    <span style={{ fontWeight:700 }}>{b.username}</span>
-                    {b.type==="permanent" ? <span style={tag("239,68,68")}>permanent</span>
-                      : isExpired ? <span style={tag("107,114,128")}>expired</span>
-                      : <span style={tag("245,158,11")}>{daysLeft}d left</span>}
-                  </div>
+                  <span style={{ fontWeight:700 }}>{b.username}</span>
+                  {b.subject && <div style={{ fontSize:11, color:"#f59e0b" }}>Subject: {b.subject}</div>}
                   <div style={{ fontSize:11, color:"#6b7280" }}>{b.reason}</div>
+                  <div style={{ fontSize:11, color:"#10b981" }}>Expired · {b.duration||""}</div>
                   <div style={{ fontSize:10, color:"#4b5563" }}>{new Date(b.bannedAt).toLocaleString()}</div>
                 </div>
-                <button onClick={()=>handleUnban(b.uid,b.username)} style={btn("g")}>Unban</button>
               </div>
-            );
-          })
-        }
-      </div>
+            ))}
+          </div>
+        )}
+        </>);
+      })()}
     </div>
   );
 }
@@ -1332,7 +1378,7 @@ function MassPushPanel() {
       try {
         const res = await fetch("/api/send-notification", {
           method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ token, title, body, url:"/", sender: "Admin" }),
+          body: JSON.stringify({ token, title, body, url:"/", sender: _adminUsername }),
         });
         if (res.ok) sent++;
       } catch {}
