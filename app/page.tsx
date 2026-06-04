@@ -760,23 +760,8 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
 
           {/* PREFERENCES TAB */}
           {tab === "prefs" && (<>
-            <div style={{ marginBottom:16 }}>
-              <div style={{ fontSize:11, color:"#6b7280", textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:10 }}>Language</div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                {LANGUAGES.map(lang => (
-                  <button key={lang.code} onClick={() => { applyGoogleTranslate(lang.code); }} style={{
-                    display:"flex", alignItems:"center", gap:8,
-                    background: "rgba(255,255,255,0.04)",
-                    border:`1px solid #2d2d44`,
-                    borderRadius:10, color:"#e5e7eb", fontSize:13, fontWeight:600,
-                    padding:"9px 12px", cursor:"pointer", textAlign:"left" as const,
-                  }}>
-                    <span style={{ fontSize:18 }}>{lang.flag}</span>
-                    <span>{lang.native}</span>
-                  </button>
-                ))}
-              </div>
-              <div style={{ fontSize:11, color:"#4b5563", marginTop:8, textAlign:"center" as const }}>Powered by Google Translate</div>
+            <div style={{ color:"#4b5563", fontSize:13, textAlign:"center" as const, padding:"20px 0" }}>
+              No preferences available yet.
             </div>
           </>)}
 
@@ -1580,6 +1565,7 @@ export default function Home() {
             await set(lbRef, {
               name: lbName, score: finalScore, streak: finalBest, category: finalCat,
               roundSize: finalRounds, timerDuration: finalTimer,
+              difficulty: difficulty || "mixed",
               date: now.toLocaleDateString("en-US", { weekday:"short", year:"numeric", month:"short", day:"numeric" }),
               ts: now.getTime(),
             });
@@ -1881,6 +1867,7 @@ export default function Home() {
     const [catFilter, setCatFilter] = useState("all");
     const [roundFilter, setRoundFilter] = useState(0);
     const [timerFilter, setTimerFilter] = useState(0);
+    const [diffFilter, setDiffFilter] = useState("all");
     const INITIAL = 5;
 
     const filtered = globalLB.filter(e => {
@@ -1892,6 +1879,7 @@ export default function Home() {
         if (bucket.min === 0 && bucket.max === 0) { if (t !== 0) return false; }
         else { if (t < bucket.min || t > bucket.max) return false; }
       }
+      if (diffFilter !== "all" && e.difficulty !== diffFilter) return false;
       return true;
     }).sort((a, b) => b.score - a.score);
 
@@ -1933,9 +1921,22 @@ export default function Home() {
 
         {/* Timer filter */}
         <div style={{ fontSize:10, color:"#4b5563", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Time limit</div>
-        <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:14 }}>
+        <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
           {TIMER_BUCKETS.map((b, i) => (
             <Pill key={i} label={b.label} active={timerFilter === i} onClick={() => setTimerFilter(i)} />
+          ))}
+        </div>
+
+        {/* Difficulty filter */}
+        <div style={{ fontSize:10, color:"#4b5563", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Difficulty</div>
+        <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:14 }}>
+          {([["all","All","#6b7280"],["easy","🟢 Easy","#10b981"],["medium","🟡 Medium","#f59e0b"],["hard","🔴 Hard","#ef4444"],["mixed","🌈 Mixed","#a855f7"]] as const).map(([d,label,col]) => (
+            <button key={d} onClick={() => setDiffFilter(d)} style={{
+              background: diffFilter===d ? `rgba(${d==="easy"?"16,185,129":d==="medium"?"245,158,11":d==="hard"?"239,68,68":d==="mixed"?"168,85,247":"107,114,128"},0.2)` : "rgba(255,255,255,0.04)",
+              border: `1px solid ${diffFilter===d ? col : "#2d2d44"}`,
+              borderRadius:99, color: diffFilter===d ? col : "#6b7280",
+              fontSize:11, fontWeight:700, padding:"4px 10px", cursor:"pointer", whiteSpace:"nowrap" as const, flexShrink:0,
+            }}>{label}</button>
           ))}
         </div>
 
@@ -2066,68 +2067,60 @@ export default function Home() {
       )}
 
       {/* Warn / Ban popup */}
-      {warnModal && (
+      {warnModal && warnModal.type === "warn" && (
         <div style={{ position:"fixed" as const, inset:0, background:"rgba(0,0,0,0.9)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-          <div style={{
-            background:"#1a1a2e",
-            border: `2px solid ${warnModal.type==="ban" ? "rgba(239,68,68,0.7)" : "rgba(245,158,11,0.6)"}`,
-            borderRadius:20, padding:"28px 24px", maxWidth:380, width:"100%", textAlign:"center" as const, color:"#fff"
-          }}>
-            <div style={{ fontSize:52, marginBottom:12 }}>{warnModal.type==="ban" ? "🔨" : "⚠️"}</div>
-            <h2 style={{ fontSize:"1.4rem", fontWeight:900, margin:"0 0 8px", color: warnModal.type==="ban" ? "#ef4444" : "#f59e0b" }}>
-              {warnModal.type==="ban" ? "You've been banned" : "You've been warned"}
-            </h2>
-
-            {/* Duration for bans */}
-            {warnModal.type==="ban" && warnModal.duration && (
-              <div style={{ fontSize:14, fontWeight:700, color:"#ef4444", marginBottom:8 }}>
-                Duration: {warnModal.duration === "permanent" ? "Permanent" : warnModal.duration}
-              </div>
-            )}
-            {warnModal.type==="ban" && warnModal.expiresAt && (
-              <div style={{ fontSize:12, color:"#6b7280", marginBottom:8 }}>
-                Expires: {new Date(warnModal.expiresAt).toLocaleString()}
-              </div>
-            )}
-
-            {/* Subject */}
+          <div style={{ background:"#1a1a2e", border:"2px solid rgba(245,158,11,0.6)", borderRadius:20, padding:"28px 24px", maxWidth:380, width:"100%", textAlign:"center" as const, color:"#fff" }}>
+            <div style={{ fontSize:52, marginBottom:12 }}>⚠️</div>
+            <h2 style={{ fontSize:"1.4rem", fontWeight:900, margin:"0 0 8px", color:"#f59e0b" }}>You've been warned</h2>
             {warnModal.subject && (
               <div style={{ fontSize:12, color:"#6b7280", marginBottom:4 }}>
-                Subject: <span style={{ color: warnModal.type==="ban"?"#ef4444":"#f59e0b", fontWeight:700 }}>{warnModal.subject}</span>
-                {warnModal.subjectCount > 1 && (
-                  <span style={{ color:"#ef4444", marginLeft:6 }}>
-                    ({warnModal.subjectCount}× on this subject)
-                  </span>
-                )}
+                Subject: <span style={{ color:"#f59e0b", fontWeight:700 }}>{warnModal.subject}</span>
+                {warnModal.subjectCount > 1 && <span style={{ color:"#ef4444", marginLeft:6 }}>({warnModal.subjectCount}× on this subject)</span>}
               </div>
             )}
-
-            {/* Total count */}
-            {warnModal.type==="warn" && warnModal.totalWarns > 1 && (
-              <div style={{ fontSize:12, color:"#6b7280", marginBottom:4 }}>
-                Total warnings: <span style={{ color:"#ef4444", fontWeight:700 }}>{warnModal.totalWarns}</span>
-              </div>
+            {warnModal.totalWarns > 1 && (
+              <div style={{ fontSize:12, color:"#6b7280", marginBottom:4 }}>Total warnings: <span style={{ color:"#ef4444", fontWeight:700 }}>{warnModal.totalWarns}</span></div>
             )}
-            {warnModal.type==="ban" && warnModal.totalBans > 1 && (
-              <div style={{ fontSize:12, color:"#6b7280", marginBottom:4 }}>
-                Times banned: <span style={{ color:"#ef4444", fontWeight:700 }}>{warnModal.totalBans}</span>
-              </div>
-            )}
-
-            {/* Reason */}
             <p style={{ color:"#d1d5db", fontSize:14, lineHeight:1.6, margin:"12px 0 20px", background:"rgba(255,255,255,0.04)", borderRadius:10, padding:"12px" }}>
               {warnModal.reason || "No reason given"}
             </p>
             <div style={{ fontSize:11, color:"#4b5563", marginBottom:16 }}>— TrivQuic Admin</div>
-            <button onClick={() => setWarnModal(null)} style={{
-              background: warnModal.type==="ban"
-                ? "linear-gradient(135deg,#ef4444,#b91c1c)"
-                : "linear-gradient(135deg,#f59e0b,#ef4444)",
-              border:"none", borderRadius:10, color:"#fff", fontWeight:800, fontSize:"1rem", padding:"12px 32px", cursor:"pointer"
-            }}>
+            <button onClick={() => setWarnModal(null)} style={{ background:"linear-gradient(135deg,#f59e0b,#ef4444)", border:"none", borderRadius:10, color:"#fff", fontWeight:800, fontSize:"1rem", padding:"12px 32px", cursor:"pointer" }}>
               I understand
             </button>
           </div>
+        </div>
+      )}
+
+      {/* BAN — full screen, no dismiss */}
+      {warnModal && warnModal.type === "ban" && (
+        <div style={{ position:"fixed" as const, inset:0, background:"#0a0a0a", zIndex:9999, display:"flex", flexDirection:"column" as const, alignItems:"center", justifyContent:"center", padding:24, color:"#fff" }}>
+          <div style={{ fontSize:80, marginBottom:20 }}>🔨</div>
+          <h1 style={{ fontSize:"2rem", fontWeight:900, color:"#ef4444", margin:"0 0 12px", textAlign:"center" as const }}>You've been banned</h1>
+          {warnModal.duration && (
+            <div style={{ fontSize:"1.2rem", fontWeight:700, color:"#ef4444", marginBottom:8 }}>
+              {warnModal.duration === "permanent" ? "Permanent ban" : `Duration: ${warnModal.duration}`}
+            </div>
+          )}
+          {warnModal.expiresAt && (
+            <div style={{ fontSize:13, color:"#6b7280", marginBottom:16 }}>
+              Expires: {new Date(warnModal.expiresAt).toLocaleString()}
+            </div>
+          )}
+          {warnModal.subject && (
+            <div style={{ fontSize:13, color:"#9ca3af", marginBottom:6 }}>
+              Subject: <span style={{ color:"#ef4444", fontWeight:700 }}>{warnModal.subject}</span>
+              {warnModal.subjectCount > 1 && <span style={{ color:"#ef4444", marginLeft:6 }}>({warnModal.subjectCount}× on this subject)</span>}
+            </div>
+          )}
+          {warnModal.totalBans > 1 && (
+            <div style={{ fontSize:13, color:"#9ca3af", marginBottom:8 }}>Times banned: <span style={{ color:"#ef4444", fontWeight:700 }}>{warnModal.totalBans}</span></div>
+          )}
+          <div style={{ background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:14, padding:"16px 24px", maxWidth:360, margin:"16px 0 24px", textAlign:"center" as const }}>
+            <div style={{ fontSize:14, color:"#d1d5db", lineHeight:1.7 }}>{warnModal.reason || "No reason given"}</div>
+          </div>
+          <div style={{ fontSize:12, color:"#4b5563" }}>— TrivQuic Admin</div>
+          <div style={{ fontSize:11, color:"#2d2d44", marginTop:40 }}>If you believe this is a mistake, contact support.</div>
         </div>
       )}
 
