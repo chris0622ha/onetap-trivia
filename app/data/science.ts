@@ -155,7 +155,7 @@ export const science = [
   { q: "What is an herbivore?", a: "Animal that eats only plants", w: ["Animal that eats meat", "Animal that eats both", "Animal that eats fungi"] },
   { q: "What is an omnivore?", a: "Animal that eats both plants and meat", w: ["Animal that eats only plants", "Animal that eats only meat", "Animal that eats insects only"] },
   { q: "What is photosynthesis' waste product?", a: "Oxygen", w: ["Carbon dioxide", "Glucose", "Water"] },
-  { q: "What is cellular respiration's waste product?", a: "Carbon dioxide and water", w: ["Oxygen", "Glucose", "ATP only"] },,
+  { q: "What is cellular respiration's waste product?", a: "Carbon dioxide and water", w: ["Oxygen", "Glucose", "ATP only"] },
   { q: "What is the chemical symbol for gold?", a: "Au", w: ["Go","Gd","Ag"], d: 1 },
   { q: "How many bones are in the adult human body?", a: "206", w: ["187","212","243"], d: 1 },
   { q: "What planet is closest to the Sun?", a: "Mercury", w: ["Venus","Mars","Earth"], d: 1 },
