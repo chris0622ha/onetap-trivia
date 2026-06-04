@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
   const sw = `
 importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js");
@@ -18,13 +18,20 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Only handle background messages here — FCM will NOT auto-display if we use
+// data-only messages (no notification key at top level or in webpush)
 messaging.onBackgroundMessage((payload) => {
-  const { title, body, url } = payload.data || {};
-  self.registration.showNotification(title || "TrivQuic", {
-    body: body || "You have a new notification",
+  // If FCM already showed a notification (webpush.notification), don't show another
+  if (payload.notification) return;
+  const data = payload.data || {};
+  const title = data.title || "TrivQuic";
+  const body = data.body || "";
+  if (!body && !title) return;
+  self.registration.showNotification(title, {
+    body,
     icon: "/favicon.ico",
     badge: "/favicon.ico",
-    data: { url: url || "/" },
+    data: { url: data.url || "/" },
     vibrate: [100, 50, 100],
   });
 });
@@ -42,4 +49,3 @@ self.addEventListener("notificationclick", (event) => {
     },
   });
 }
-
