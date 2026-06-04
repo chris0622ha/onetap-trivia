@@ -1680,7 +1680,6 @@ export default function Home() {
               { icon:"🔷", name:"TypeScript", desc:"Type-safe frontend + API code" },
               { icon:"🎨", name:"Tailwind CSS", desc:"Utility styling" },
               { icon:"🌐", name:"Google Translate API", desc:"14-language support" },
-              { icon:"🤖", name:"Claude (Anthropic)", desc:"AI pair programmer — built this entire app" },
             ].map(t => (
               <div key={t.name} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 0", borderBottom:"1px solid #2d2d44" }}>
                 <span style={{ fontSize:20, flexShrink:0, width:28, textAlign:"center" as const }}>{t.icon}</span>
