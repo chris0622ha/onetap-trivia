@@ -382,6 +382,7 @@ function UsersPanel() {
   const [selected, setSelected] = useState<any>(null);
   const { msg, flash } = useFlash();
   const [editUsername, setEditUsername] = useState("");
+  const [editDisplayName, setEditDisplayName] = useState("");
   const [editScore, setEditScore] = useState("");
   const [editStreak, setEditStreak] = useState("");
   const [editChangesLeft, setEditChangesLeft] = useState("");
@@ -413,6 +414,14 @@ function UsersPanel() {
     await update(ref(db), updates);
     patchUser(uid, { username:val });
     flash(`Username → ${val}`); setEditUsername("");
+  }
+
+  async function handleSetDisplayName(uid: string) {
+    const val = editDisplayName.trim();
+    if (!val) { flash("Enter a display name", "error"); return; }
+    await update(ref(db, `users/${uid}`), { displayName: val });
+    patchUser(uid, { displayName: val });
+    flash(`Display name → ${val}`); setEditDisplayName("");
   }
 
   async function handleSetScore(uid: string) {
@@ -536,6 +545,7 @@ function UsersPanel() {
             </div>
 
             <EditRow label="Username" value={editUsername} onChange={setEditUsername} onSave={()=>handleSetUsername(selected.uid)} placeholder="New username" color="g" />
+            <EditRow label="Display name" value={editDisplayName} onChange={setEditDisplayName} onSave={()=>handleSetDisplayName(selected.uid)} placeholder="Name shown on leaderboard" color="g" />
             <EditRow label="Best score" value={editScore} onChange={setEditScore} onSave={()=>handleSetScore(selected.uid)} placeholder="New score" color="b" />
             <EditRow label="Best streak" value={editStreak} onChange={setEditStreak} onSave={()=>handleSetStreak(selected.uid)} placeholder="New streak" color="r" />
             <EditRow label="Username changes left" value={editChangesLeft} onChange={setEditChangesLeft} onSave={()=>handleSetChanges(selected.uid)} placeholder="e.g. 0, 3, 99" color="y" />
