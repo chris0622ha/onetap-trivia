@@ -878,6 +878,7 @@ function BansPanel({ initUid }: { initUid?:string }) {
   const [banType, setBanType] = useState<"permanent"|"temp">("temp");
   const [banUnit, setBanUnit] = useState<"minutes"|"hours"|"days">("days");
   const [banAmount, setBanAmount] = useState("1");
+  const [banSubject, setBanSubject] = useState("");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"recent"|"warned"|"banned">("recent");
   const { msg, flash } = useFlash();
@@ -898,28 +899,43 @@ function BansPanel({ initUid }: { initUid?:string }) {
   async function handleBan() {
     const target = resolveUser(banUid);
     if (!target) { flash("User not found","error"); return; }
-    if (!banReason.trim()) { flash("Enter a reason","error"); return; }
     const now = Date.now();
     const ms = parseInt(banAmount) * UNIT_MS[banUnit];
     const expiresAt = banType==="temp" ? now + ms : null;
     const label = banType==="temp" ? `${banAmount} ${banUnit}` : "permanent";
-    const banData: any = { username:target.username, photoURL:target.photoURL||null, reason:banReason.trim(), bannedAt:now, type:banType, expiresAt, duration:label };
+    const finalBanReason = banReason.trim() || "No reason given";
+    const banData: any = { username:target.username, photoURL:target.photoURL||null, reason:finalBanReason, bannedAt:now, type:banType, expiresAt, duration:label };
     await set(ref(db,`bans/${target.uid}`), banData);
     await update(ref(db,`users/${target.uid}`), { banned:true, banExpiresAt:expiresAt, lastBannedAt:now });
     setBans(b=>[...b.filter(x=>x.uid!==target.uid),{uid:target.uid,...banData}]);
-    logAdminAction("BAN", target.username, label + ": " + banReason.trim());
+    logAdminAction("BAN", target.username, label + ": " + finalBanReason);
     flash(`${target.username} banned for ${label}`);
     setBanUid(""); setBanReason(""); setBanAmount("1");
   }
 
-  async function handleWarn(targetInput: string, reason: string) {
+  async function handleWarn(targetInput: string, reason: string, subject?: string) {
     const target = resolveUser(targetInput);
     if (!target) return;
+    const finalReason = reason.trim() || "No reason given";
     const key = Date.now().toString();
-    await set(ref(db, `warns/${target.uid}/${key}`), { reason, warnedAt: Date.now(), time: new Date().toLocaleString(), adminUid: _adminUid, adminUsername: _adminUsername });
-    await update(ref(db, `users/${target.uid}`), { lastWarnedAt: Date.now(), warnCount: (target.warnCount||0)+1 });
-    logAdminAction("WARN", target.username, reason);
-    flash(`${target.username} warned`);
+    const entry: any = { reason: finalReason, warnedAt: Date.now(), time: new Date().toLocaleString(), adminUid: _adminUid, adminUsername: _adminUsername };
+    if (subject) entry.subject = subject;
+    await set(ref(db, `warns/${target.uid}/${key}`), entry);
+    // Count warns for this subject
+    let subjectCount = 1;
+    if (subject) {
+      const allWarns = await get(ref(db, `warns/${target.uid}`));
+      if (allWarns.exists()) {
+        subjectCount = Object.values(allWarns.val() as any).filter((w: any) => w.subject === subject).length;
+      }
+    }
+    const allWarns2 = await get(ref(db, `warns/${target.uid}`));
+    const totalWarns = allWarns2.exists() ? Object.keys(allWarns2.val()).length : 1;
+    // Trigger popup for the user
+    await set(ref(db, `users/${target.uid}/pendingWarn`), { reason: finalReason, subject: subject||null, subjectCount, totalWarns, warnedAt: Date.now() });
+    await update(ref(db, `users/${target.uid}`), { lastWarnedAt: Date.now() });
+    logAdminAction("WARN", target.username, (subject ? `[${subject}] ` : "") + finalReason);
+    flash(`⚠️ ${target.username} warned`);
   }
 
   async function handleUnban(uid: string, username: string) {
@@ -949,6 +965,8 @@ function BansPanel({ initUid }: { initUid?:string }) {
         )}
         <label style={c.label}>Reason</label>
         <input value={banReason} onChange={e=>setBanReason(e.target.value)} placeholder="e.g. cheating, harassment" style={c.input} />
+        <label style={c.label}>Subject (optional)</label>
+        <input value={banSubject} onChange={e=>setBanSubject(e.target.value)} placeholder="e.g. cheating, harassment, spam" style={c.input} />
         <label style={c.label}>Ban type</label>
         <div style={{ display:"flex", gap:8, marginBottom:12 }}>
           {(["temp","permanent"] as const).map(t=>(
@@ -977,7 +995,7 @@ function BansPanel({ initUid }: { initUid?:string }) {
           <button onClick={handleBan} style={{ flex:2, background:"linear-gradient(135deg,#ef4444,#b91c1c)", border:"none", borderRadius:10, color:"#fff", fontSize:"0.95rem", fontWeight:800, padding:"12px", cursor:"pointer" }}>
             {banType==="temp"?`🔨 Ban for ${banAmount} ${banUnit}`:"🔒 Permanently Ban"}
           </button>
-          <button onClick={()=>{ if(banUid && banReason.trim()) handleWarn(banUid, banReason); else flash("Enter user + reason","error"); }} style={{ flex:1, ...btn("y"), padding:"12px", fontWeight:800 }}>
+          <button onClick={()=>{ handleWarn(banUid, banReason, banSubject||undefined); }} style={{ flex:1, ...btn("y"), padding:"12px", fontWeight:800 }}>
             ⚠️ Warn Only
           </button>
         </div>
@@ -2044,6 +2062,7 @@ function WarnsPanel() {
   const [loading, setLoading] = useState(true);
   const [warnUid, setWarnUid] = useState("");
   const [warnReason, setWarnReason] = useState("");
+  const [warnSubject, setWarnSubject] = useState("");
   const [sortBy, setSortBy] = useState<"recent"|"most">("recent");
   const { msg, flash } = useFlash();
 
@@ -2070,17 +2089,27 @@ function WarnsPanel() {
   }, []);
 
   async function issueWarn() {
-    const user = users.find(u=>u.uid===warnUid.trim()||u.username?.toLowerCase()===warnUid.trim().toLowerCase());
-    if (!user) { flash("User not found","error"); return; }
-    if (!warnReason.trim()) { flash("Enter a reason","error"); return; }
+    const target = users.find(u=>u.uid===warnUid.trim()||u.username?.toLowerCase()===warnUid.trim().toLowerCase());
+    if (!target) { flash("User not found","error"); return; }
+    const finalReason = warnReason.trim() || "No reason given";
     const key = Date.now().toString();
-    const entry = { reason: warnReason.trim(), warnedAt: Date.now(), time: new Date().toLocaleString(), adminUid: _adminUid, adminUsername: _adminUsername };
-    await set(ref(db, `warns/${user.uid}/${key}`), entry);
-    await update(ref(db, `users/${user.uid}`), { lastWarnedAt: Date.now() });
-    setWarns(w => [{ uid:user.uid, key, username:user.username, ...entry }, ...w]);
-    logAdminAction("WARN", user.username, warnReason.trim());
-    flash(`⚠️ ${user.username} warned`);
-    setWarnUid(""); setWarnReason("");
+    const entry: any = { reason: finalReason, warnedAt: Date.now(), time: new Date().toLocaleString(), adminUid: _adminUid, adminUsername: _adminUsername };
+    if (warnSubject.trim()) entry.subject = warnSubject.trim();
+    await set(ref(db, `warns/${target.uid}/${key}`), entry);
+    // Count subject warns
+    let subjectCount = 1;
+    const subj = warnSubject.trim();
+    if (subj) {
+      subjectCount = warns.filter(w => w.uid===target.uid && w.subject===subj).length + 1;
+    }
+    const totalWarns = warns.filter(w => w.uid===target.uid).length + 1;
+    // Trigger popup
+    await set(ref(db, `users/${target.uid}/pendingWarn`), { reason: finalReason, subject: subj||null, subjectCount, totalWarns, warnedAt: Date.now() });
+    await update(ref(db, `users/${target.uid}`), { lastWarnedAt: Date.now() });
+    setWarns(w => [{ uid:target.uid, key, username:target.username, ...entry }, ...w]);
+    logAdminAction("WARN", target.username, (subj ? `[${subj}] ` : "") + finalReason);
+    flash(`⚠️ ${target.username} warned`);
+    setWarnUid(""); setWarnReason(""); setWarnSubject("");
   }
 
   async function deleteWarn(uid: string, key: string) {
@@ -2105,8 +2134,10 @@ function WarnsPanel() {
         <div style={c.h2}>Issue Warning</div>
         <label style={c.label}>Username or UID</label>
         <input value={warnUid} onChange={e=>setWarnUid(e.target.value)} placeholder="username or UID" style={c.input} />
+        <label style={c.label}>Subject (optional)</label>
+        <input value={warnSubject} onChange={e=>setWarnSubject(e.target.value)} placeholder="e.g. cheating, spam, language" style={c.input} />
         <label style={c.label}>Reason</label>
-        <input value={warnReason} onChange={e=>setWarnReason(e.target.value)} placeholder="e.g. inappropriate language" style={c.input}
+        <input value={warnReason} onChange={e=>setWarnReason(e.target.value)} placeholder="e.g. inappropriate language (leave blank = No reason given)" style={c.input}
           onKeyDown={e=>e.key==="Enter"&&issueWarn()} />
         <button onClick={issueWarn} style={{ ...btn("y"), width:"100%", fontWeight:800, padding:"12px" }}>⚠️ Issue Warning</button>
       </div>
@@ -2133,7 +2164,8 @@ function WarnsPanel() {
                     {warnCounts[w.uid]||1} warn{(warnCounts[w.uid]||1)>1?"s":""}
                   </span>
                 </div>
-                <div style={{ fontSize:13, color:"#d1d5db", marginTop:2 }}>{w.reason}</div>
+                {w.subject && <div style={{ fontSize:11, color:"#f59e0b", marginTop:2 }}>Subject: {w.subject}</div>}
+                <div style={{ fontSize:13, color:"#d1d5db", marginTop:1 }}>{w.reason}</div>
                 <div style={{ fontSize:11, color:"#4b5563", marginTop:2 }}>by {w.adminUsername} · {w.time}</div>
               </div>
               <button onClick={()=>deleteWarn(w.uid, w.key)} style={{ ...btn("r"), fontSize:12, padding:"4px 10px", flexShrink:0 }}>Remove</button>
