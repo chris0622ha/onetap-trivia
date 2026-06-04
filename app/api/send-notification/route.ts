@@ -15,26 +15,18 @@ async function getAccessToken(): Promise<string> {
     iss: key.client_email,
     scope: "https://www.googleapis.com/auth/firebase.messaging",
     aud: "https://oauth2.googleapis.com/token",
-    iat: now,
-    exp: now + 3600,
+    iat: now, exp: now + 3600,
   }));
   const signingInput = `${header}.${payload}`;
-
   const pemKey = key.private_key.replace(/\\n/g, "\n");
   const keyData = pemKey.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\n/g, "");
   const binaryKey = Uint8Array.from(atob(keyData), (c) => c.charCodeAt(0));
-  const cryptoKey = await crypto.subtle.importKey(
-    "pkcs8", binaryKey.buffer,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false, ["sign"]
-  );
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5", cryptoKey,
-    new TextEncoder().encode(signingInput)
-  );
+  const cryptoKey = await crypto.subtle.importKey("pkcs8", binaryKey.buffer,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+  const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", cryptoKey,
+    new TextEncoder().encode(signingInput));
   const sig = toBase64Url(String.fromCharCode(...new Uint8Array(signature)));
   const jwt = `${signingInput}.${sig}`;
-
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -47,11 +39,14 @@ async function getAccessToken(): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    const { token, title, body, url } = await req.json();
+    const { token, title, body, url, sender } = await req.json();
     if (!token || !title) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) return NextResponse.json({ error: "No service account" }, { status: 500 });
 
     const accessToken = await getAccessToken();
+
+    // Append sender username to body if provided
+    const finalBody = sender ? `${body} -${sender}` : body;
 
     const res = await fetch(FCM_URL, {
       method: "POST",
@@ -62,14 +57,14 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         message: {
           token,
-          notification: { title, body },
+          // Only webpush notification — no top-level notification to avoid duplicates
           webpush: {
             notification: {
-              title, body,
+              title,
+              body: finalBody,
               icon: "/favicon.ico",
               badge: "/favicon.ico",
               vibrate: [100, 50, 100],
-              requireInteraction: false,
             },
             fcm_options: { link: url || "/" },
           },
