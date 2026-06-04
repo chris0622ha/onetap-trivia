@@ -1296,6 +1296,7 @@ export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showUsernamePicker, setShowUsernamePicker] = useState(false);
   const [modal, setModal] = useState<"about"|"updates"|"profile"|null>(null);
+  const [warnModal, setWarnModal] = useState<any>(null);
   const [reportTarget, setReportTarget] = useState<any>(null);
   const [showLangModal, setShowLangModal] = useState(false);
   const [currentLang, setCurrentLang] = useState("en");
@@ -1337,7 +1338,20 @@ export default function Home() {
           setName(data.username);
           try { localStorage.setItem("onetap_name", data.username); } catch {}
         }
-        // Request push notification permission + get FCM token
+        // Warn popup listener
+  useEffect(() => {
+    if (!user) return;
+    const warnRef = ref(db, `users/${user.uid}/pendingWarn`);
+    const unsub = onValue(warnRef, snap => {
+      if (!snap.exists()) return;
+      const w = snap.val();
+      setWarnModal(w);
+      remove(warnRef).catch(() => {});
+    });
+    return () => off(warnRef);
+  }, [user?.uid]);
+
+  // Request push notification permission + get FCM token
         try {
           if ("Notification" in window && Notification.permission === "default") {
             await Notification.requestPermission();
@@ -1738,7 +1752,7 @@ export default function Home() {
     <>
       {/* Language button — top left, fixed */}
       <button onClick={() => setShowLangModal(true)}
-        style={{ position:"fixed", top:12, left:16, zIndex:200, background:"rgba(15,15,26,0.92)", backdropFilter:"blur(8px)", border:"1px solid #2d2d44", borderRadius:8, color:"#9ca3af", fontSize:12, fontWeight:600, padding:"5px 12px", cursor:"pointer" }}>
+        style={{ position:"fixed", top:12, left:16, zIndex:200, background:"rgba(15,15,26,0.7)", border:"1px solid rgba(45,45,68,0.6)", borderRadius:8, color:"#9ca3af", fontSize:12, fontWeight:600, padding:"5px 12px", cursor:"pointer" }}>
         🌐 {LANGUAGES.find(l => l.code === currentLang)?.flag || "🌐"}
       </button>
 
@@ -1766,7 +1780,7 @@ export default function Home() {
       )}
 
       {/* Right side — profile + actions, fixed, no scroll */}
-      <div style={{ position:"fixed", top:0, right:0, padding:"12px 16px", zIndex:200, display:"flex", alignItems:"center", gap:10, background:"rgba(15,15,26,0.92)", backdropFilter:"blur(8px)" }}>
+      <div style={{ position:"fixed", top:0, right:0, padding:"12px 16px", zIndex:200, display:"flex", alignItems:"center", gap:10 }}>
         {authLoading ? null : user ? (
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <button onClick={() => setModal("profile")} title="View your profile"
@@ -2044,6 +2058,34 @@ export default function Home() {
       )}
       {showLangModal && (
         <LangModal currentLang={currentLang} onSelect={(lang) => { setCurrentLang(lang); setShowLangModal(false); }} onClose={() => setShowLangModal(false)} />
+      )}
+
+      {/* Warn popup */}
+      {warnModal && (
+        <div style={{ position:"fixed" as const, inset:0, background:"rgba(0,0,0,0.85)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+          <div style={{ background:"#1a1a2e", border:"2px solid rgba(245,158,11,0.6)", borderRadius:20, padding:"28px 24px", maxWidth:360, width:"100%", textAlign:"center" as const, color:"#fff" }}>
+            <div style={{ fontSize:48, marginBottom:12 }}>⚠️</div>
+            <h2 style={{ fontSize:"1.3rem", fontWeight:900, margin:"0 0 8px", color:"#f59e0b" }}>You've been warned</h2>
+            {warnModal.subject && (
+              <div style={{ fontSize:12, color:"#6b7280", marginBottom:4 }}>
+                Subject: <span style={{ color:"#f59e0b", fontWeight:700 }}>{warnModal.subject}</span>
+                {warnModal.subjectCount > 1 && <span style={{ color:"#ef4444", marginLeft:6 }}>({warnModal.subjectCount}× on this subject)</span>}
+              </div>
+            )}
+            {warnModal.totalWarns > 1 && (
+              <div style={{ fontSize:12, color:"#6b7280", marginBottom:8 }}>
+                Total warns: <span style={{ color:"#ef4444", fontWeight:700 }}>{warnModal.totalWarns}</span>
+              </div>
+            )}
+            <p style={{ color:"#d1d5db", fontSize:14, lineHeight:1.6, margin:"12px 0 20px" }}>
+              {warnModal.reason || "No reason given"}
+            </p>
+            <div style={{ fontSize:11, color:"#4b5563", marginBottom:16 }}>from TrivQuic Admin</div>
+            <button onClick={() => setWarnModal(null)} style={{ background:"linear-gradient(135deg,#f59e0b,#ef4444)", border:"none", borderRadius:10, color:"#fff", fontWeight:800, fontSize:"1rem", padding:"12px 32px", cursor:"pointer" }}>
+              I understand
+            </button>
+          </div>
+        </div>
       )}
 
       <div style={{ textAlign:"center", marginBottom:28 }}>
