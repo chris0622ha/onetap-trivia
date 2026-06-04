@@ -38,6 +38,17 @@ const tag = (col: string) => ({
 const CATEGORIES = ["geography","science","history","math","sports","entertainment"];
 const CAT_EMOJI: Record<string,string> = { geography:"🗺️", science:"🔬", history:"📜", math:"🔢", sports:"⚽", entertainment:"🎬" };
 
+function BadgeIcon({ badge, size=13 }: { badge?:string|null; size?:number }) {
+  if (!badge) return null;
+  if (badge==="star")   return <span title="Loyal Player" style={{fontSize:size}}>⭐</span>;
+  if (badge==="check")  return <span title="Verified" style={{fontSize:size,color:"#3b82f6",fontWeight:900}}>✓</span>;
+  if (badge==="crown")  return <span title="Champion" style={{fontSize:size}}>👑</span>;
+  if (badge==="tester") return <span title="Tester" style={{fontSize:size*0.85,background:"#ca8a04",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:900,fontFamily:"monospace"}}>T</span>;
+  if (badge==="gold")   return <span title="Gold Medal" style={{fontSize:size}}>🥇</span>;
+  if (badge==="silver") return <span title="Silver Medal" style={{fontSize:size}}>🥈</span>;
+  if (badge==="bronze") return <span title="Bronze Medal" style={{fontSize:size}}>🥉</span>;
+  return null;
+}
 function Avatar({ src, name, size=32 }: { src?:string|null; name:string; size?:number }) {
   return src ? (
     <img src={src} alt="" width={size} height={size} style={{ borderRadius:"50%", border:"2px solid #2d2d44", flexShrink:0, display:"block", objectFit:"cover" }} />
@@ -564,9 +575,7 @@ function UsersPanel() {
                   <div style={{ minWidth:0 }}>
                     <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
                       {u.username}
-                      {u.badge === "star"  && <span style={{ marginLeft:4 }}>⭐</span>}
-                      {u.badge === "check" && <span style={{ marginLeft:4, color:"#3b82f6", fontWeight:900 }}>✓</span>}
-                      {u.badge === "crown" && <span style={{ marginLeft:4 }}>👑</span>}
+                      <BadgeIcon badge={u.badge} size={13} />
                       {u.isAdmin && <span style={{ marginLeft:6, ...tag("245,158,11") }}>admin</span>}
                       {u.banned && <span style={{ marginLeft:6, ...tag("239,68,68") }}>banned</span>}
                     </div>
