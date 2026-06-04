@@ -1368,26 +1368,50 @@ export default function Home() {
             }
           }
         } catch {}
-        // Log login
+        // Log login + track duration via periodic writes + onDisconnect
         const loginKey = Date.now().toString();
+        const loginTs = Date.now();
         try {
-          await set(ref(db, `users/${u.uid}/loginHistory/${loginKey}`), {
+          const histRef = ref(db, `users/${u.uid}/loginHistory/${loginKey}`);
+          await set(histRef, {
             loginAt: new Date().toLocaleString(),
-            ts: Date.now(),
+            ts: loginTs,
+            durationMin: 0,
           });
-          // Store session start in sessionStorage to calc duration on logout
+          // onDisconnect writes the duration when connection drops (tab close, crash, etc.)
+          const calcDuration = () => Math.max(1, Math.round((Date.now() - loginTs) / 60000));
+          // We can't use a dynamic value with onDisconnect, so we update it every minute
+          // so it's always at most 1 min stale when they disconnect
+          const durationInterval = setInterval(async () => {
+            try {
+              await update(histRef, { durationMin: calcDuration() });
+            } catch {}
+          }, 60000);
+          // Store refs in sessionStorage so sign-out can clear the interval
           sessionStorage.setItem("loginKey", loginKey);
           sessionStorage.setItem("loginUid", u.uid);
-          sessionStorage.setItem("loginTs", Date.now().toString());
+          sessionStorage.setItem("loginTs", loginTs.toString());
+          // Write duration immediately on page unload (best-effort)
+          const handleUnload = () => {
+            navigator.sendBeacon(
+              `/api/log-session?uid=${u.uid}&key=${loginKey}&dur=${calcDuration()}`
+            );
+          };
+          window.addEventListener("beforeunload", handleUnload);
+          // Store interval id to clear on sign out
+          (window as any).__loginInterval = durationInterval;
+          (window as any).__loginUnload = handleUnload;
         } catch {}
       } else {
-        // Log session duration on sign out
+        // Clean sign-out — write final duration
         try {
+          if ((window as any).__loginInterval) clearInterval((window as any).__loginInterval);
+          if ((window as any).__loginUnload) window.removeEventListener("beforeunload", (window as any).__loginUnload);
           const loginKey = sessionStorage.getItem("loginKey");
           const loginUid = sessionStorage.getItem("loginUid");
           const loginTs = sessionStorage.getItem("loginTs");
           if (loginKey && loginUid && loginTs) {
-            const duration = Math.round((Date.now() - parseInt(loginTs)) / 60000);
+            const duration = Math.max(1, Math.round((Date.now() - parseInt(loginTs)) / 60000));
             await update(ref(db, `users/${loginUid}/loginHistory/${loginKey}`), { durationMin: duration });
             sessionStorage.clear();
           }
