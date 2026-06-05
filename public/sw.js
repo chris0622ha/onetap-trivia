@@ -13,15 +13,12 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-  const { title, body, url } = payload.data || {};
-  self.registration.showNotification(title || "TrivQuic", {
-    body: body || "You have a new notification",
-    icon: "/favicon.ico",
-    badge: "/favicon.ico",
-    data: { url: url || "/" },
-    vibrate: [100, 50, 100],
-  });
+// webpush.notification is handled by the browser directly — no need to call
+// showNotification here. Doing so causes a duplicate "New notification from TrivQuic".
+// onBackgroundMessage only fires for data-only messages; for webpush.notification
+// messages the browser displays them automatically before this runs.
+messaging.onBackgroundMessage((_payload) => {
+  // intentionally empty — browser already displayed the notification
 });
 
 self.addEventListener("notificationclick", (event) => {
