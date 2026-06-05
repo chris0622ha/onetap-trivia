@@ -3063,32 +3063,52 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
         ];
         const q = cmdInput.trim().toLowerCase();
         const filter = (cmds: [string,string][]) => cmds.filter(([cmd,label]) => !q || cmd.includes(q) || label.toLowerCase().includes(q));
-        const Section = ({ title, color, cmds }: { title: string; color: string; cmds: [string,string][] }) => cmds.length === 0 ? null : (
-          <div style={{ marginBottom:8 }}>
-            {cmds.map(([cmd, label]) => (
-              <div key={cmd} onClick={() => { if (userData?.isAdmin) { setCmdTarget({cmd, label}); setCmdOpen(false); setCmdInput(""); } else { runCommand(cmd); setCmdOpen(false); setCmdInput(""); } }}
-                style={{ padding:"7px 12px", borderRadius:8, background:"rgba(255,255,255,0.04)", color:"#d1d5db", fontSize:13, cursor:"pointer", marginBottom:2 }}
-                onMouseEnter={e => (e.currentTarget.style.background = `${color}22`)}
-                onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}>
-                {label}
-              </div>
-            ))}
+        const allCmds: [string,string][] = [
+          ["fireworks","🎆 fireworks"],["confetti","🎉 confetti"],["party","🎊 party"],["snow","❄️ snow"],["matrix","💊 matrix"],
+          ["bubbles","🫧 bubbles"],["lasers","⚡ lasers"],["dvd","📀 dvd"],["love","❤️ love"],["rage","😡 rage"],["amongus","🧑‍🚀 among us"],
+          ["rainbow","🌈 rainbow"],["invert","🙃 invert"],["neon","✨ neon"],["vhs","📼 vhs"],["glitch","👾 glitch"],
+          ["shake","💥 shake"],["spin","🌀 spin"],["zoom","🔍 zoom"],["flip","🙃 flip"],["mirror","🪞 mirror"],["pixelate","🟫 pixelate"],["drunk","🥴 drunk"],
+          ["comic","🎭 comic sans"],["tiny","🔬 tiny"],["huge","🔭 huge"],["zalgo","̴z̴a̴l̴g̴o̴ zalgo"],["reverse","↩️ reverse text"],
+          ["hack","💻 hack"],["sudo","⌨️ sudo"],["404","🚫 404"],
+          ["friday","📅 friday"],["midnight","🌙 midnight"],["newyear","🎆 new year"],["rickroll","🎵 rickroll"],
+          ["profile","👤 profile"],["signout","🚪 sign out"],["admin","⚙️ admin"],
+          ["announce","📢 announce"],["notif","🔔 push notif"],["maintenance","🔧 maintenance"],
+          ["ban","🔨 ban user"],["warn","⚠️ warn user"],["unban","✅ unban user"],
+          ["users","👥 users"],["bans","🔨 bans"],["warns","⚠️ warns"],["analytics","📈 analytics"],["logs","📋 logs"],["system","⚙️ system"],
+          ["undo","↩️ undo"],["reset","🔄 reset"],
+        ];
+        const filtered = allCmds.filter(([cmd,label]) => !q || cmd.includes(q) || label.toLowerCase().includes(q));
+        const CmdBtn = ({ cmd, label, audience }: { cmd: string; label: string; audience: "just_me"|"all" }) => (
+          <div onClick={async () => {
+              setCmdOpen(false); setCmdInput("");
+              runCommand(cmd);
+              if (audience === "all") await broadcastCmd(cmd, "all");
+            }}
+            style={{ padding:"7px 12px", borderRadius:8, background:"rgba(255,255,255,0.04)", color:"#d1d5db", fontSize:13, cursor:"pointer", marginBottom:2 }}
+            onMouseEnter={e => (e.currentTarget.style.background = audience === "all" ? "rgba(16,185,129,0.18)" : "rgba(245,158,11,0.18)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}>
+            {label}
           </div>
         );
         return (
           <div style={{ position:"fixed", inset:0, zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }}
             onClick={() => setCmdOpen(false)}>
             <div onClick={e => e.stopPropagation()}
-              style={{ background:"#1a1a2e", border:"1px solid #f59e0b", borderRadius:14, padding:"20px 24px", width:360, boxShadow:"0 0 40px rgba(245,158,11,0.3)", maxHeight:"80vh", display:"flex", flexDirection:"column" as const }}>
+              style={{ background:"#1a1a2e", border:"1px solid #f59e0b", borderRadius:14, padding:"20px 24px", width:400, boxShadow:"0 0 40px rgba(245,158,11,0.3)", maxHeight:"80vh", display:"flex", flexDirection:"column" as const }}>
               <div style={{ fontSize:11, color:"#f59e0b", fontWeight:700, letterSpacing:"0.1em", marginBottom:10 }}>⚡ COMMAND PALETTE</div>
               <input autoFocus value={cmdInput} onChange={e => setCmdInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") { const all = [...filter(personalCmds),...filter(globalCmds),...filter(adminCmds)]; if(all.length===1){runCommand(all[0][0]);}else{runCommand(cmdInput.trim().toLowerCase());} setCmdOpen(false); setCmdInput(""); } if (e.key === "Escape") { setCmdOpen(false); setCmdInput(""); } }}
+                onKeyDown={e => { if (e.key === "Escape") { setCmdOpen(false); setCmdInput(""); } }}
                 placeholder="type a command..."
                 style={{ width:"100%", background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:8, color:"#fff", fontSize:14, padding:"10px 12px", outline:"none", boxSizing:"border-box" as const, marginBottom:12, flexShrink:0 }} />
-              <div style={{ overflowY:"auto" as const, flex:1 }}>
-                <Section title="🙋 Personal" color="#f59e0b" cmds={filter(personalCmds)} />
-                {userData?.isAdmin && <Section title="🌐 Global (admin)" color="#10b981" cmds={filter(globalCmds)} />}
-                {userData?.isAdmin && <Section title="🔧 Admin Panel" color="#3b82f6" cmds={filter(adminCmds)} />}
+              <div style={{ overflowY:"auto" as const, flex:1, display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                <div>
+                  <div style={{ fontSize:10, color:"#f59e0b", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, padding:"4px 4px 8px" }}>🙋 Personal Only</div>
+                  {filtered.map(([cmd, label]) => <CmdBtn key={cmd} cmd={cmd} label={label} audience="just_me" />)}
+                </div>
+                <div>
+                  <div style={{ fontSize:10, color:"#10b981", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, padding:"4px 4px 8px" }}>🌐 Anyone</div>
+                  {filtered.map(([cmd, label]) => <CmdBtn key={cmd} cmd={cmd} label={label} audience="all" />)}
+                </div>
               </div>
               <div style={{ fontSize:10, color:"#4b5563", marginTop:10, textAlign:"center" as const, flexShrink:0 }}>` or ~ or Ctrl+K · Esc to close</div>
             </div>
