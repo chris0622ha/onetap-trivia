@@ -3054,11 +3054,20 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
           </div>
         );
         const GlobalBtn = ({ cmd, label }: { cmd: string; label: string }) => (
-          <div onClick={async () => { runCommand(cmd); setCmdInput(""); await broadcastCmd(cmd, globalAudience); }}
-            style={{ padding:"7px 12px", borderRadius:8, background:"rgba(255,255,255,0.04)", color:"#d1d5db", fontSize:13, cursor:"pointer", marginBottom:2 }}
-            onMouseEnter={e => (e.currentTarget.style.background = "rgba(16,185,129,0.18)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}>
-            {label}
+          <div style={{ marginBottom:2 }}>
+            <div style={{ padding:"7px 12px", borderRadius:8, background:"rgba(255,255,255,0.04)", color:"#d1d5db", fontSize:13, cursor:"default", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <span>{label}</span>
+              <div style={{ display:"flex", gap:3 }}>
+                {([["🙋","me","just_me"],["🌐","all","all"],["👑","crown","crown"],["🥇","gold","gold"],["🥈","silver","silver"],["🥉","bronze","bronze"]] as [string,string,string][]).map(([icon,,aud]) => (
+                  <div key={aud} onClick={async () => { runCommand(cmd); if (aud !== "just_me") await broadcastCmd(cmd, aud as any); }}
+                    style={{ padding:"2px 5px", borderRadius:5, background:"rgba(16,185,129,0.12)", fontSize:12, cursor:"pointer", lineHeight:1.4 }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(16,185,129,0.35)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(16,185,129,0.12)")}>
+                    {icon}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         );
         const audiences: [string, string, "all"|"crown"|"gold"|"silver"|"bronze"][] = [
@@ -3074,19 +3083,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
                 onKeyDown={e => { if (e.key === "Escape") { setCmdOpen(false); setCmdInput(""); } }}
                 placeholder="type a command..."
                 style={{ width:"100%", background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:8, color:"#fff", fontSize:14, padding:"10px 12px", outline:"none", boxSizing:"border-box" as const, marginBottom:12, flexShrink:0 }} />
-              {/* Audience selector for global */}
-              <div style={{ display:"flex", gap:4, marginBottom:10, flexShrink:0 }}>
-                <div style={{ fontSize:10, color:"#6b7280", display:"flex", alignItems:"center", marginRight:4 }}>Send to:</div>
-                {audiences.map(([icon, name, val]) => (
-                  <div key={val} onClick={() => setGlobalAudience(val)}
-                    style={{ padding:"3px 8px", borderRadius:6, fontSize:11, fontWeight:700, cursor:"pointer",
-                      background: globalAudience === val ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.04)",
-                      color: globalAudience === val ? "#10b981" : "#6b7280",
-                      border: globalAudience === val ? "1px solid #10b981" : "1px solid transparent" }}>
-                    {icon} {name}
-                  </div>
-                ))}
-              </div>
+
               <div style={{ overflowY:"auto" as const, flex:1, display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 <div>
                   <div style={{ fontSize:10, color:"#f59e0b", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, padding:"4px 4px 8px" }}>🙋 Personal Only</div>
