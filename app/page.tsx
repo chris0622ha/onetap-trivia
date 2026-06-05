@@ -1757,15 +1757,18 @@ export default function Home() {
         // Check active ban on every load (refresh bypass prevention)
         try {
           const banSnap = await get(ref(db, `bans/${u.uid}`));
+          console.log("[BanCheck] exists:", banSnap.exists(), banSnap.val());
           if (banSnap.exists()) {
             const ban = banSnap.val();
             const isPermanent = ban.duration === "permanent";
             const isActive = isPermanent || !ban.expiresAt || Date.now() < ban.expiresAt;
+            console.log("[BanCheck] isActive:", isActive, "expiresAt:", ban.expiresAt, "now:", Date.now());
             if (isActive) {
+              console.log("[BanCheck] calling setWarnModal ban");
               setWarnModal({ type: "ban", ...ban });
             }
           }
-        } catch {}
+        } catch (e) { console.log("[BanCheck] error:", e); }
         // Log login + track duration via periodic writes + onDisconnect
         const loginKey = Date.now().toString();
         const loginTs = Date.now();
