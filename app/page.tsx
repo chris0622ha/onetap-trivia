@@ -3062,6 +3062,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
         ];
         const q = cmdInput.trim().toLowerCase();
         const filter = (cmds: [string,string][]) => cmds.filter(([cmd,label]) => !q || cmd.includes(q) || label.toLowerCase().includes(q));
+        const personalOnlyCmds = new Set(["profile","signout","admin","undo","reset","rickroll","friday","midnight","newyear","announce","notif","maintenance","ban","warn","unban","users","bans","warns","analytics","logs","system"]);
         const allCmds: [string,string][] = [
           ["fireworks","🎆 fireworks"],["confetti","🎉 confetti"],["party","🎊 party"],["snow","❄️ snow"],["matrix","💊 matrix"],
           ["bubbles","🫧 bubbles"],["lasers","⚡ lasers"],["dvd","📀 dvd"],["love","❤️ love"],["rage","😡 rage"],["amongus","🧑‍🚀 among us"],
@@ -3077,6 +3078,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
           ["undo","↩️ undo"],["reset","🔄 reset"],
         ];
         const filtered = allCmds.filter(([cmd,label]) => !q || cmd.includes(q) || label.toLowerCase().includes(q));
+        const filteredAnyone = filtered.filter(([cmd]) => !personalOnlyCmds.has(cmd));
         const CmdBtn = ({ cmd, label, audience }: { cmd: string; label: string; audience: "just_me"|"all" }) => (
           <div onClick={async () => {
               setCmdOpen(false); setCmdInput("");
@@ -3106,7 +3108,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
                 </div>
                 <div>
                   <div style={{ fontSize:10, color:"#10b981", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, padding:"4px 4px 8px" }}>🌐 Anyone</div>
-                  {filtered.map(([cmd, label]) => <CmdBtn key={cmd} cmd={cmd} label={label} audience="all" />)}
+                  {filteredAnyone.map(([cmd, label]) => <CmdBtn key={cmd} cmd={cmd} label={label} audience="all" />)}
                 </div>
               </div>
               <div style={{ fontSize:10, color:"#4b5563", marginTop:10, textAlign:"center" as const, flexShrink:0 }}>` or ~ or Ctrl+K · Esc to close</div>
