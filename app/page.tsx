@@ -1516,41 +1516,36 @@ export default function Home() {
   }, []);
 
 
-  // Warn/Ban popup listener — subscribes via onAuthStateChanged so uid is always fresh
+  // Warn/Ban popup listener
   useEffect(() => {
-    let warnRef: any = null;
-    let banRef: any = null;
     let unsubWarn: any = null;
     let unsubBan: any = null;
 
     const unsubAuth = onAuthStateChanged(auth, (u) => {
-      // Clean up previous listeners
-      if (warnRef && unsubWarn) { unsubWarn(); off(warnRef); }
-      if (banRef && unsubBan) { unsubBan(); off(banRef); }
+      // Clean up previous listeners before re-subscribing
+      if (unsubWarn) { unsubWarn(); unsubWarn = null; }
+      if (unsubBan) { unsubBan(); unsubBan = null; }
       if (!u) return;
 
-      warnRef = ref(db, `users/${u.uid}/pendingWarn`);
-      banRef = ref(db, `users/${u.uid}/pendingBanNotif`);
-
-      unsubWarn = onValue(warnRef, (snap) => {
+      unsubWarn = onValue(ref(db, `users/${u.uid}/pendingWarn`), (snap) => {
         if (!snap.exists()) return;
         const d = { ...snap.val(), type: "warn" };
         setWarnModal(d);
-        setTimeout(() => remove(warnRef).catch(() => {}), 300);
+        remove(ref(db, `users/${u.uid}/pendingWarn`)).catch(() => {});
       });
 
-      unsubBan = onValue(banRef, (snap) => {
+      unsubBan = onValue(ref(db, `users/${u.uid}/pendingBanNotif`), (snap) => {
         if (!snap.exists()) return;
         const d = { ...snap.val(), type: "ban" };
         setWarnModal(d);
-        setTimeout(() => remove(banRef).catch(() => {}), 300);
+        remove(ref(db, `users/${u.uid}/pendingBanNotif`)).catch(() => {});
       });
     });
 
     return () => {
       unsubAuth();
-      if (warnRef && unsubWarn) { unsubWarn(); off(warnRef); }
-      if (banRef && unsubBan) { unsubBan(); off(banRef); }
+      if (unsubWarn) unsubWarn();
+      if (unsubBan) unsubBan();
     };
   }, []); // empty deps — manages own auth subscription
 
