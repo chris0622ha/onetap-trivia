@@ -3065,7 +3065,6 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
         const filter = (cmds: [string,string][]) => cmds.filter(([cmd,label]) => !q || cmd.includes(q) || label.toLowerCase().includes(q));
         const Section = ({ title, color, cmds }: { title: string; color: string; cmds: [string,string][] }) => cmds.length === 0 ? null : (
           <div style={{ marginBottom:8 }}>
-            <div style={{ fontSize:10, color, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, padding:"6px 4px 4px" }}>{title}</div>
             {cmds.map(([cmd, label]) => (
               <div key={cmd} onClick={() => { if (userData?.isAdmin) { setCmdTarget({cmd, label}); setCmdOpen(false); setCmdInput(""); } else { runCommand(cmd); setCmdOpen(false); setCmdInput(""); } }}
                 style={{ padding:"7px 12px", borderRadius:8, background:"rgba(255,255,255,0.04)", color:"#d1d5db", fontSize:13, cursor:"pointer", marginBottom:2 }}
@@ -3106,25 +3105,20 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
             <div style={{ fontSize:11, color:"#10b981", fontWeight:700, letterSpacing:"0.1em", marginBottom:4 }}>📡 SEND COMMAND</div>
             <div style={{ fontSize:16, fontWeight:800, color:"#fff", marginBottom:16 }}>{cmdTarget.label}</div>
             <div style={{ display:"flex", flexDirection:"column" as const, gap:8 }}>
-              {[
-                ["just_me","🙋 Just me","Only you"],
-                ["all","🌐 Everyone","All logged-in users"],
-                ["crown","👑 Crown","Crown badge holders"],
-                ["gold","🥇 Gold","Gold badge holders"],
-                ["silver","🥈 Silver","Silver badge holders"],
-                ["bronze","🥉 Bronze","Bronze badge holders"],
-              ].map(([audience, label, desc]) => (
+              {([
+                ["just_me","🙋 Personal Only"] as const,
+                ["all","🌐 Anyone"] as const,
+              ]).map(([audience, label]) => (
                 <div key={audience} onClick={async () => {
                   const cmd = cmdTarget.cmd;
                   setCmdTarget(null);
-                  runCommand(cmd); // always run for self
-                  if (audience !== "just_me") await broadcastCmd(cmd, audience);
+                  runCommand(cmd);
+                  if (audience === "all") await broadcastCmd(cmd, "all");
                 }}
-                  style={{ padding:"10px 14px", borderRadius:10, background:"rgba(16,185,129,0.08)", cursor:"pointer", border:"1px solid rgba(16,185,129,0.15)" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(16,185,129,0.18)")}
+                  style={{ padding:"14px 18px", borderRadius:10, background:"rgba(16,185,129,0.08)", cursor:"pointer", border:"1px solid rgba(16,185,129,0.15)", textAlign:"center" as const }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(16,185,129,0.25)")}
                   onMouseLeave={e => (e.currentTarget.style.background = "rgba(16,185,129,0.08)")}>
-                  <div style={{ color:"#fff", fontWeight:700, fontSize:14 }}>{label}</div>
-                  <div style={{ color:"#6b7280", fontSize:12 }}>{desc}</div>
+                  <div style={{ color:"#fff", fontWeight:800, fontSize:15 }}>{label}</div>
                 </div>
               ))}
             </div>
