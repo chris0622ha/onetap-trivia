@@ -1806,9 +1806,28 @@ export default function Home() {
     }
     if (cmd === "dvd") {
       const c=makeCanvas(); const ctx2=c.getContext("2d")!;
-      let x=c.width/2,y=c.height/2,vx=3,vy=2;const w=120,h=60;let hue=0;
+      let x=c.width/2,y=c.height/2,vx=3,vy=2;let hue=0;
+      const W=140,H=70;
+      const drawLogo=(px:number,py:number,col:string)=>{
+        ctx2.save();ctx2.translate(px,py);
+        // Swoosh arc behind text
+        ctx2.strokeStyle=col;ctx2.lineWidth=3;ctx2.globalAlpha=0.5;
+        ctx2.beginPath();ctx2.ellipse(W/2,H*0.35,W*0.45,H*0.28,0,Math.PI,Math.PI*2);ctx2.stroke();
+        ctx2.globalAlpha=1;
+        // DVD text
+        ctx2.fillStyle=col;ctx2.font="bold 44px Arial, sans-serif";ctx2.letterSpacing="4px";
+        ctx2.fillText("DVD",8,H*0.72);
+        // Video text underneath
+        ctx2.font="bold 13px Arial, sans-serif";ctx2.letterSpacing="6px";
+        ctx2.fillText("VIDEO",22,H*0.95);
+        ctx2.restore();
+      };
       let raf2:number;let stopped2=false;
-      const tick=()=>{if(stopped2)return;ctx2.clearRect(0,0,c.width,c.height);x+=vx;y+=vy;if(x+w>c.width||x<0){vx*=-1;hue=(hue+40)%360;}if(y+h>c.height||y<0){vy*=-1;hue=(hue+40)%360;}ctx2.fillStyle=`hsl(${hue},100%,60%)`;ctx2.font="bold 48px sans-serif";ctx2.fillText("DVD",x,y+h);raf2=requestAnimationFrame(tick);};
+      const tick=()=>{if(stopped2)return;ctx2.clearRect(0,0,c.width,c.height);x+=vx;y+=vy;
+        if(x+W>c.width||x<0){vx*=-1;hue=(hue+50)%360;}
+        if(y+H>c.height||y<0){vy*=-1;hue=(hue+50)%360;}
+        drawLogo(x,y,`hsl(${hue},100%,65%)`);
+        raf2=requestAnimationFrame(tick);};
       tick();effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();}});autoStop(15000); return;
     }
     if (cmd === "vhs") {
