@@ -2446,7 +2446,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
             <div style={{ fontSize:14, color:"#d1d5db", lineHeight:1.7 }}>{warnModal.reason || "No reason given"}</div>
           </div>
           <div style={{ fontSize:12, color:"#4b5563" }}>— {warnModal.adminUsername || "TrivQuic Admin"}</div>
-          <div style={{ fontSize:11, color:"#2d2d44", marginTop:40 }}>If you believe this is a mistake, contact support.</div>
+          <div style={{ fontSize:11, color:"#2d2d44", marginTop:40 }}>If you believe this is a mistake, contact <a href="mailto:chris0622ha@gmail.com" style={{ color:"#2d2d44" }}>chris0622ha@gmail.com</a></div>
         </div>
       )}
 

@@ -935,6 +935,7 @@ function BansPanel({ initUid }: { initUid?:string }) {
       duration: label,
       expiresAt,
       bannedAt: now,
+      adminUsername: _adminUsername,
     });
     setBans(b=>[...b.filter(x=>x.uid!==target.uid),{uid:target.uid,...banData}]);
     logAdminAction("BAN", target.username, (banSubject.trim() ? `[${banSubject.trim()}] ` : "") + label + ": " + finalBanReason);
