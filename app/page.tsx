@@ -1449,6 +1449,18 @@ export default function Home() {
           setName(data.username);
           try { localStorage.setItem("onetap_name", data.username); } catch {}
         }
+        // Check active ban on every load (refresh bypass prevention)
+        try {
+          const banSnap = await get(ref(db, `bans/${u.uid}`));
+          if (banSnap.exists()) {
+            const ban = banSnap.val();
+            const isPermanent = ban.duration === "permanent";
+            const isActive = isPermanent || !ban.expiresAt || Date.now() < ban.expiresAt;
+            if (isActive) {
+              setWarnModal({ type: "ban", ...ban });
+            }
+          }
+        } catch {}
         // Log login + track duration via periodic writes + onDisconnect
         const loginKey = Date.now().toString();
         const loginTs = Date.now();
