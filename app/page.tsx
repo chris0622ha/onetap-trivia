@@ -1419,7 +1419,7 @@ export default function Home() {
   const [globalAudience, setGlobalAudience] = useState<"all"|"crown"|"gold"|"silver"|"bronze">("all");
 
   // ── Effects canvas manager
-  const effectsRef = React.useRef<{ stop: () => void } | null>(null);
+  const effectsRef = React.useRef<{ stop: () => void }[]>([]);
 
   function makeCanvas(z=8888) {
     const c = document.createElement("canvas");
@@ -1429,8 +1429,11 @@ export default function Home() {
     return c;
   }
 
-  function autoStop(ms: number) {
-    setTimeout(() => { if (effectsRef.current) { effectsRef.current.stop(); effectsRef.current = null; } }, ms);
+  function autoStop(ms: number, stopper?: { stop: () => void }) {
+    setTimeout(() => {
+      const s = stopper || effectsRef.current[effectsRef.current.length - 1];
+      if (s) { s.stop(); effectsRef.current = effectsRef.current.filter(e => e !== s); }
+    }, ms);
   }
 
   const lastCmdRef = React.useRef<string>("");
@@ -1457,13 +1460,13 @@ export default function Home() {
     if (cmd === "undo") { cmd = lastCmdRef.current ? "undo_" + lastCmdRef.current : "reset"; }
     else { lastCmdRef.current = cmd; }
 
-    // stop any running canvas effect
-    if (effectsRef.current) { effectsRef.current.stop(); effectsRef.current = null; }
+    // effects stack — no cleanup, let the chaos accumulate
 
     const root = document.documentElement;
 
     // ── RESET / UNDO helpers ──────────────────────────────────────────
     if (cmd === "reset" || cmd.startsWith("undo_")) {
+      effectsRef.current.forEach(e => e.stop()); effectsRef.current = [];
       root.style.filter = "";
       root.style.transform = "";
       root.style.animation = "";
@@ -1534,7 +1537,7 @@ export default function Home() {
       let scale = 1; let raf2: number; let stopped2 = false;
       const tick = () => { if(stopped2)return; scale+=0.003; root.style.transform=`scale(${scale})`; raf2=requestAnimationFrame(tick); };
       tick();
-      effectsRef.current={stop:()=>{stopped2=true;cancelAnimationFrame(raf2);root.style.transform="";scale=1;}};
+      effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);root.style.transform="";scale=1;}});
       autoStop(8000); return;
     }
 
@@ -1543,7 +1546,7 @@ export default function Home() {
       let hue=0; let raf2:number; let stopped2=false;
       const tick=()=>{if(stopped2)return;hue=(hue+1)%360;root.style.filter=`hue-rotate(${hue}deg)`;raf2=requestAnimationFrame(tick);};
       tick();
-      effectsRef.current={stop:()=>{stopped2=true;cancelAnimationFrame(raf2);root.style.filter="";}};
+      effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);root.style.filter="";}});
       autoStop(12000); return;
     }
 
@@ -1559,16 +1562,16 @@ export default function Home() {
         raf2=setTimeout(()=>requestAnimationFrame(tick),Math.random()*80+20) as any;
       };
       tick();
-      effectsRef.current={stop:()=>{stopped2=true;clearTimeout(raf2 as any);root.style.transform="";root.style.filter="";}};
+      effectsRef.current.push({stop:()=>{stopped2=true;clearTimeout(raf2 as any);root.style.transform="";root.style.filter="";}});
       autoStop(8000); return;
     }
 
     // ── PIXELATE ──────────────────────────────────────────────────────
     if (cmd === "pixelate") {
       let px=1; let dir=1; let raf2:number; let stopped2=false;
-      const tick=()=>{if(stopped2)return;px+=dir*0.5;if(px>20)dir=-1;if(px<=1){root.style.imageRendering="";root.style.filter="";effectsRef.current=null;return;}root.style.filter=`blur(${px*0.3}px)`;root.style.imageRendering="pixelated";raf2=requestAnimationFrame(tick);};
+      const tick=()=>{if(stopped2)return;px+=dir*0.5;if(px>20)dir=-1;if(px<=1){root.style.imageRendering="";root.style.filter="";return;}root.style.filter=`blur(${px*0.3}px)`;root.style.imageRendering="pixelated";raf2=requestAnimationFrame(tick);};
       tick();
-      effectsRef.current={stop:()=>{stopped2=true;cancelAnimationFrame(raf2);root.style.filter="";root.style.imageRendering="";}};
+      effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);root.style.filter="";root.style.imageRendering="";}});
       return;
     }
 
@@ -1577,7 +1580,7 @@ export default function Home() {
       let t=0; let raf2:number; let stopped2=false;
       const tick=()=>{if(stopped2)return;t+=0.02;root.style.transform=`rotate(${Math.sin(t)*3}deg) translate(${Math.sin(t*0.7)*4}px,${Math.cos(t*0.9)*2}px)`;raf2=requestAnimationFrame(tick);};
       tick();
-      effectsRef.current={stop:()=>{stopped2=true;cancelAnimationFrame(raf2);root.style.transform="";}};
+      effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);root.style.transform="";}});
       autoStop(10000); return;
     }
 
@@ -1611,7 +1614,7 @@ export default function Home() {
       document.body.appendChild(div);
       let i=0;
       const iv=setInterval(()=>{if(i>=lines.length){clearInterval(iv);setTimeout(()=>div.remove(),2000);return;}div.innerHTML+=lines[i++]+"<br>";},400);
-      effectsRef.current={stop:()=>{clearInterval(iv);div.remove();}};
+      effectsRef.current.push({stop:()=>{clearInterval(iv);div.remove();}});
       autoStop(8000); return;
     }
 
@@ -1638,7 +1641,7 @@ export default function Home() {
           ctx2.font=`${e.size}px serif`;ctx2.fillText(e.emoji,e.x,e.y);});
         raf2=requestAnimationFrame(tick);};
       tick();
-      effectsRef.current={stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();root.style.filter="";}};
+      effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();root.style.filter="";}});
       autoStop(6000); return;
     }
 
@@ -1653,7 +1656,7 @@ export default function Home() {
           ctx2.font=`${h.size}px serif`;ctx2.globalAlpha=h.alpha;ctx2.fillText("❤️",h.x,h.y);});
         ctx2.globalAlpha=1;raf2=requestAnimationFrame(tick);};
       tick();
-      effectsRef.current={stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();}};
+      effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();}});
       autoStop(10000); return;
     }
 
@@ -1675,7 +1678,7 @@ export default function Home() {
         crew.forEach(cr=>{cr.x+=cr.speed;if(cr.x>c.width+60)cr.x=-60;if(cr.x<-60)cr.x=c.width+60;drawCrewmate(cr.x,cr.y,cr.color,cr.speed<0);});
         raf2=requestAnimationFrame(tick);};
       tick();
-      effectsRef.current={stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();}};
+      effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();}});
       autoStop(12000); return;
     }
 
@@ -1693,7 +1696,7 @@ export default function Home() {
           ctx2.save();ctx2.translate(p.x,p.y);ctx2.rotate(p.rot*Math.PI/180);ctx2.fillStyle=p.color;ctx2.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx2.restore();});
         raf2=requestAnimationFrame(tick);};
       tick();
-      effectsRef.current={stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();root.style.filter="";}};
+      effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();root.style.filter="";}});
       autoStop(12000); return;
     }
 
@@ -1708,7 +1711,7 @@ export default function Home() {
           ctx2.beginPath();ctx2.arc(f.x,f.y,f.r,0,Math.PI*2);ctx2.fillStyle=`rgba(255,255,255,${f.alpha})`;ctx2.fill();});
         raf2=requestAnimationFrame(tick);};
       tick();
-      effectsRef.current={stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();}};
+      effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();}});
       autoStop(15000); return;
     }
 
@@ -2704,6 +2707,24 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
     </div>
   );
 
+  const personalCmds: [string,string][] = [
+    ["profile","👤 profile"],["signout","🚪 sign out"],["admin","⚙️ admin"],
+    ["notif","🔔 push notif"],["maintenance","🔧 maintenance"],
+    ["ban","🔨 ban user"],["warn","⚠️ warn user"],["unban","✅ unban user"],
+    ["users","👥 users"],["bans","🔨 bans"],["warns","⚠️ warns"],
+    ["analytics","📈 analytics"],["logs","📋 logs"],["system","⚙️ system"],
+  ];
+  const globalCmds: [string,string][] = [
+    ["fireworks","🎆 fireworks"],["confetti","🎉 confetti"],["party","🎊 party"],["snow","❄️ snow"],["matrix","💊 matrix"],
+    ["bubbles","🫧 bubbles"],["lasers","⚡ lasers"],["dvd","📀 dvd"],["love","❤️ love"],["rage","😡 rage"],["amongus","🧑‍🚀 among us"],
+    ["rainbow","🌈 rainbow"],["invert","🙃 invert"],["neon","✨ neon"],["vhs","📼 vhs"],["glitch","👾 glitch"],
+    ["shake","💥 shake"],["spin","🌀 spin"],["zoom","🔍 zoom"],["flip","🙃 flip"],["mirror","🪞 mirror"],["pixelate","🟫 pixelate"],["drunk","🥴 drunk"],
+    ["comic","🎭 comic sans"],["tiny","🔬 tiny"],["huge","🔭 huge"],["zalgo","👾 zalgo"],["reverse","↩️ reverse text"],
+    ["hack","💻 hack"],["sudo","⌨️ sudo"],["404","🚫 404"],
+    ["friday","📅 friday"],["midnight","🌙 midnight"],["newyear","🎆 new year"],["rickroll","🎵 rickroll"],
+    ["announce","📢 announce"],["undo","↩️ undo"],["reset","🔄 reset"],
+  ];
+
   if (screen === "home") return (
     <div style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"72px 16px 20px", color:"#fff" }}>
       <AuthHeader />
@@ -3021,84 +3042,53 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
       </div>
 
       {/* ── SECRET COMMAND PALETTE ─────────────────────────────────── */}
-      {cmdOpen && (() => {
-        const q = cmdInput.trim().toLowerCase();
-        const filter = (cmds: [string,string][]) => cmds.filter(([cmd,label]) => !q || cmd.includes(q) || label.toLowerCase().includes(q));
-        // Personal Only: nav/account commands only
-        const personalCmds: [string,string][] = [
-          ["profile","👤 profile"],["signout","🚪 sign out"],["admin","⚙️ admin"],
-          ["notif","🔔 push notif"],["maintenance","🔧 maintenance"],
-          ["ban","🔨 ban user"],["warn","⚠️ warn user"],["unban","✅ unban user"],
-          ["users","👥 users"],["bans","🔨 bans"],["warns","⚠️ warns"],
-          ["analytics","📈 analytics"],["logs","📋 logs"],["system","⚙️ system"],
-        ];
-        // Global: everything fun + announce + undo/reset
-        const globalCmds: [string,string][] = [
-          ["fireworks","🎆 fireworks"],["confetti","🎉 confetti"],["party","🎊 party"],["snow","❄️ snow"],["matrix","💊 matrix"],
-          ["bubbles","🫧 bubbles"],["lasers","⚡ lasers"],["dvd","📀 dvd"],["love","❤️ love"],["rage","😡 rage"],["amongus","🧑‍🚀 among us"],
-          ["rainbow","🌈 rainbow"],["invert","🙃 invert"],["neon","✨ neon"],["vhs","📼 vhs"],["glitch","👾 glitch"],
-          ["shake","💥 shake"],["spin","🌀 spin"],["zoom","🔍 zoom"],["flip","🙃 flip"],["mirror","🪞 mirror"],["pixelate","🟫 pixelate"],["drunk","🥴 drunk"],
-          ["comic","🎭 comic sans"],["tiny","🔬 tiny"],["huge","🔭 huge"],["zalgo","̴z̴a̴l̴g̴o̴ zalgo"],["reverse","↩️ reverse text"],
-          ["hack","💻 hack"],["sudo","⌨️ sudo"],["404","🚫 404"],
-          ["friday","📅 friday"],["midnight","🌙 midnight"],["newyear","🎆 new year"],["rickroll","🎵 rickroll"],
-          ["announce","📢 announce"],["undo","↩️ undo"],["reset","🔄 reset"],
-        ];
-        const fpersonal = personalCmds.filter(([cmd,label]) => !q || cmd.includes(q) || label.toLowerCase().includes(q));
-        const fglobal = globalCmds.filter(([cmd,label]) => !q || cmd.includes(q) || label.toLowerCase().includes(q));
-        const PersonalBtn = ({ cmd, label }: { cmd: string; label: string }) => (
-          <div onClick={() => { runCommand(cmd); setCmdInput(""); }}
-            style={{ padding:"7px 12px", borderRadius:8, background:"rgba(255,255,255,0.04)", color:"#d1d5db", fontSize:13, cursor:"pointer", marginBottom:2 }}
-            onMouseEnter={e => (e.currentTarget.style.background = "rgba(245,158,11,0.18)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}>
-            {label}
-          </div>
-        );
-        const GlobalBtn = ({ cmd, label }: { cmd: string; label: string }) => (
-          <div style={{ marginBottom:2 }}>
-            <div style={{ padding:"7px 12px", borderRadius:8, background:"rgba(255,255,255,0.04)", color:"#d1d5db", fontSize:13, cursor:"default", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <span>{label}</span>
-              <div style={{ display:"flex", gap:3 }}>
-                {([["🙋","me","just_me"],["🌐","all","all"],["👑","crown","crown"],["🥇","gold","gold"],["🥈","silver","silver"],["🥉","bronze","bronze"]] as [string,string,string][]).map(([icon,,aud]) => (
-                  <div key={aud} onClick={async () => { runCommand(cmd); if (aud !== "just_me") await broadcastCmd(cmd, aud as any); }}
-                    style={{ padding:"2px 5px", borderRadius:5, background:"rgba(16,185,129,0.12)", fontSize:12, cursor:"pointer", lineHeight:1.4 }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(16,185,129,0.35)")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(16,185,129,0.12)")}>
-                    {icon}
+      {cmdOpen && (
+        <div style={{ position:"fixed", inset:0, zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }}
+          onClick={() => setCmdOpen(false)}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background:"#1a1a2e", border:"1px solid #f59e0b", borderRadius:14, padding:"20px 24px", width:480, boxShadow:"0 0 40px rgba(245,158,11,0.3)", maxHeight:"85vh", display:"flex", flexDirection:"column" as const }}>
+            <div style={{ fontSize:11, color:"#f59e0b", fontWeight:700, letterSpacing:"0.1em", marginBottom:10 }}>⚡ COMMAND PALETTE</div>
+            <input autoFocus value={cmdInput} onChange={e => setCmdInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Escape") { setCmdOpen(false); setCmdInput(""); } }}
+              placeholder="type a command..."
+              style={{ width:"100%", background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:8, color:"#fff", fontSize:14, padding:"10px 12px", outline:"none", boxSizing:"border-box" as const, marginBottom:12, flexShrink:0 }} />
+            <div style={{ overflowY:"auto" as const, flex:1, display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              <div>
+                <div style={{ fontSize:10, color:"#f59e0b", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, padding:"4px 4px 8px" }}>🙋 Personal Only</div>
+                {personalCmds.filter(([cmd,label]) => !cmdInput.trim() || cmd.includes(cmdInput.trim().toLowerCase()) || label.toLowerCase().includes(cmdInput.trim().toLowerCase())).map(([cmd, label]) => (
+                  <div key={cmd} onClick={() => { runCommand(cmd); setCmdInput(""); }}
+                    style={{ padding:"7px 12px", borderRadius:8, background:"rgba(255,255,255,0.04)", color:"#d1d5db", fontSize:13, cursor:"pointer", marginBottom:2 }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(245,158,11,0.18)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}>
+                    {label}
+                  </div>
+                ))}
+              </div>
+              <div>
+                <div style={{ fontSize:10, color:"#10b981", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, padding:"4px 4px 8px" }}>🌐 Global</div>
+                {globalCmds.filter(([cmd,label]) => !cmdInput.trim() || cmd.includes(cmdInput.trim().toLowerCase()) || label.toLowerCase().includes(cmdInput.trim().toLowerCase())).map(([cmd, label]) => (
+                  <div key={cmd} style={{ marginBottom:2 }}>
+                    <div style={{ padding:"7px 12px", borderRadius:8, background:"rgba(255,255,255,0.04)", color:"#d1d5db", fontSize:13, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                      <span>{label}</span>
+                      <div style={{ display:"flex", gap:3 }}>
+                        {([ ["🙋","just_me"],["🌐","all"],["👑","crown"],["🥇","gold"],["🥈","silver"],["🥉","bronze"] ] as [string,string][]).map(([icon, aud]) => (
+                          <div key={aud} onClick={async () => { runCommand(cmd); if (aud !== "just_me") await broadcastCmd(cmd, aud as any); }}
+                            style={{ padding:"2px 5px", borderRadius:5, background:"rgba(16,185,129,0.12)", fontSize:12, cursor:"pointer", lineHeight:1.4 }}
+                            onMouseEnter={e => (e.currentTarget.style.background = "rgba(16,185,129,0.35)")}
+                            onMouseLeave={e => (e.currentTarget.style.background = "rgba(16,185,129,0.12)")}>
+                            {icon}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
+            <div style={{ fontSize:10, color:"#4b5563", marginTop:10, textAlign:"center" as const, flexShrink:0 }}>` or ~ or Ctrl+K · Esc to close</div>
           </div>
-        );
-        const audiences: [string, string, "all"|"crown"|"gold"|"silver"|"bronze"][] = [
-          ["🌐","Everyone","all"],["👑","Crown","crown"],["🥇","Gold","gold"],["🥈","Silver","silver"],["🥉","Bronze","bronze"],
-        ];
-        return (
-          <div style={{ position:"fixed", inset:0, zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }}
-            onClick={() => setCmdOpen(false)}>
-            <div onClick={e => e.stopPropagation()}
-              style={{ background:"#1a1a2e", border:"1px solid #f59e0b", borderRadius:14, padding:"20px 24px", width:480, boxShadow:"0 0 40px rgba(245,158,11,0.3)", maxHeight:"85vh", display:"flex", flexDirection:"column" as const }}>
-              <div style={{ fontSize:11, color:"#f59e0b", fontWeight:700, letterSpacing:"0.1em", marginBottom:10 }}>⚡ COMMAND PALETTE</div>
-              <input autoFocus value={cmdInput} onChange={e => setCmdInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Escape") { setCmdOpen(false); setCmdInput(""); } }}
-                placeholder="type a command..."
-                style={{ width:"100%", background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:8, color:"#fff", fontSize:14, padding:"10px 12px", outline:"none", boxSizing:"border-box" as const, marginBottom:12, flexShrink:0 }} />
-
-              <div style={{ overflowY:"auto" as const, flex:1, display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-                <div>
-                  <div style={{ fontSize:10, color:"#f59e0b", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, padding:"4px 4px 8px" }}>🙋 Personal Only</div>
-                  {fpersonal.map(([cmd, label]) => <PersonalBtn key={cmd} cmd={cmd} label={label} />)}
-                </div>
-                <div>
-                  <div style={{ fontSize:10, color:"#10b981", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, padding:"4px 4px 8px" }}>🌐 Global</div>
-                  {fglobal.map(([cmd, label]) => <GlobalBtn key={cmd} cmd={cmd} label={label} />)}
-                </div>
-              </div>
-              <div style={{ fontSize:10, color:"#4b5563", marginTop:10, textAlign:"center" as const, flexShrink:0 }}>` or ~ or Ctrl+K · Esc to close</div>
-            </div>
-          </div>
-        );
-      })()}
+        </div>
+      )}
 
       <div style={{ display:"flex", gap:8, marginTop:24, marginBottom:8 }}>
         <button onClick={() => window.dispatchEvent(new CustomEvent("onetap-modal", { detail:"about" }))}
