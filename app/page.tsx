@@ -3191,13 +3191,25 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
         <div style={{ position:"fixed", inset:0, zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }}
           onClick={() => setCmdOpen(false)}>
           <div onClick={e => e.stopPropagation()}
-            style={{ background:"#1a1a2e", border:"1px solid #f59e0b", borderRadius:14, padding:"20px 24px", width:480, boxShadow:"0 0 40px rgba(245,158,11,0.3)", maxHeight:"85vh", display:"flex", flexDirection:"column" as const }}>
-            <div style={{ fontSize:11, color:"#f59e0b", fontWeight:700, letterSpacing:"0.1em", marginBottom:10 }}>⚡ COMMAND PALETTE</div>
+            style={{ background:"#1a1a2e", border:"1px solid #f59e0b", borderRadius:14, padding:"16px", width:"min(480px, 95vw)", boxShadow:"0 0 40px rgba(245,158,11,0.3)", maxHeight:"85vh", display:"flex", flexDirection:"column" as const }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10, flexShrink:0 }}>
+              <div style={{ fontSize:11, color:"#f59e0b", fontWeight:700, letterSpacing:"0.1em" }}>⚡ COMMAND PALETTE</div>
+              <div style={{ display:"flex", gap:4 }}>
+                <div onClick={() => runCommand("undo")}
+                  style={{ padding:"3px 8px", borderRadius:6, background:"rgba(245,158,11,0.15)", color:"#f59e0b", fontSize:11, fontWeight:700, cursor:"pointer", border:"1px solid rgba(245,158,11,0.3)" }}
+                  onMouseEnter={e=>(e.currentTarget.style.background="rgba(245,158,11,0.3)")}
+                  onMouseLeave={e=>(e.currentTarget.style.background="rgba(245,158,11,0.15)")}>↩ Undo</div>
+                <div onClick={() => { effectsRef.current.forEach(ef=>ef.stop()); effectsRef.current=[]; const r=(document.getElementById("__next")||document.documentElement) as HTMLElement; r.style.filter=""; r.style.transform=""; r.style.animation=""; (r as any).style.fontFamily=""; document.getElementById("__cmd_style")?.remove(); document.querySelectorAll<HTMLCanvasElement>("canvas[style*='z-index']").forEach(c=>c.remove()); }}
+                  style={{ padding:"3px 8px", borderRadius:6, background:"rgba(239,68,68,0.15)", color:"#ef4444", fontSize:11, fontWeight:700, cursor:"pointer", border:"1px solid rgba(239,68,68,0.3)" }}
+                  onMouseEnter={e=>(e.currentTarget.style.background="rgba(239,68,68,0.3)")}
+                  onMouseLeave={e=>(e.currentTarget.style.background="rgba(239,68,68,0.15)")}>⏹ Stop</div>
+              </div>
+            </div>
             <input autoFocus value={cmdInput} onChange={e => setCmdInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Escape") { setCmdOpen(false); setCmdInput(""); } }}
               placeholder="type a command..."
               style={{ width:"100%", background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:8, color:"#fff", fontSize:14, padding:"10px 12px", outline:"none", boxSizing:"border-box" as const, marginBottom:12, flexShrink:0 }} />
-            <div style={{ overflowY:"auto" as const, flex:1, display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+            <div style={{ overflowY:"auto" as const, flex:1, display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(170px, 1fr))", gap:8 }}>
               <div>
                 <div style={{ fontSize:10, color:"#f59e0b", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, padding:"4px 4px 8px" }}>🙋 Personal Only</div>
                 {personalCmds.filter(([cmd,label]) => !cmdInput.trim() || cmd.includes(cmdInput.trim().toLowerCase()) || label.toLowerCase().includes(cmdInput.trim().toLowerCase())).map(([cmd, label]) => (
@@ -3231,7 +3243,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
                         </div>
                         <div style={{ display:"flex", gap:4, flexWrap:"wrap" as const }}>
                           {([ ["🙋 Me","just_me"],["🌐 Everyone","all"],["👑 Crown","crown"],["🥇 Gold","gold"],["🥈 Silver","silver"],["🥉 Bronze","bronze"] ] as [string,string][]).map(([lbl, aud]) => (
-                            <div key={aud} onClick={async (e) => { e.stopPropagation(); runCommand(cmd); if (aud !== "just_me") await broadcastCmd(cmd, aud as any, cmdDuration); setExpandedCmd(null); }}
+                            <div key={aud} onClick={async (e) => { e.stopPropagation(); runCommand(cmd); if (cmdDuration > 0) setTimeout(() => runCommand("reset"), cmdDuration * 1000); if (aud !== "just_me") await broadcastCmd(cmd, aud as any, cmdDuration); setExpandedCmd(null); }}
                               style={{ padding:"3px 8px", borderRadius:6, background:"rgba(16,185,129,0.15)", color:"#10b981", fontSize:11, fontWeight:700, cursor:"pointer", border:"1px solid rgba(16,185,129,0.3)" }}
                               onMouseEnter={e => (e.currentTarget.style.background = "rgba(16,185,129,0.35)")}
                               onMouseLeave={e => (e.currentTarget.style.background = "rgba(16,185,129,0.15)")}>
