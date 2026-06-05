@@ -1711,8 +1711,7 @@ export default function Home() {
 
 
 
-  const [warnModal, setWarnModal_raw] = useState<any>(null);
-  const setWarnModal = (v: any) => { console.log("[warnModal SET]", JSON.stringify(v)?.slice(0,80), new Error().stack?.split("\n")[1]?.trim()); setWarnModal_raw(v); };
+  const [warnModal, setWarnModal] = useState<any>(null);
   const [viewedUser, setViewedUser] = useState<any>(null); // for public profile viewing
   const [reportTarget, setReportTarget] = useState<any>(null);
   const [showLangModal, setShowLangModal] = useState(false);
@@ -1758,18 +1757,15 @@ export default function Home() {
         // Check active ban on every load (refresh bypass prevention)
         try {
           const banSnap = await get(ref(db, `bans/${u.uid}`));
-          console.log("[BanCheck] exists:", banSnap.exists(), banSnap.val());
           if (banSnap.exists()) {
             const ban = banSnap.val();
             const isPermanent = ban.duration === "permanent";
             const isActive = isPermanent || !ban.expiresAt || Date.now() < ban.expiresAt;
-            console.log("[BanCheck] isActive:", isActive, "expiresAt:", ban.expiresAt, "now:", Date.now());
             if (isActive) {
-              console.log("[BanCheck] calling setWarnModal ban");
-              setWarnModal({ type: "ban", ...ban });
+              setWarnModal({ ...ban, type: "ban" });
             }
           }
-        } catch (e) { console.log("[BanCheck] error:", e); }
+        } catch {}
         // Log login + track duration via periodic writes + onDisconnect
         const loginKey = Date.now().toString();
         const loginTs = Date.now();
@@ -1845,7 +1841,7 @@ export default function Home() {
 
       unsubBan = onValue(ref(db, `users/${u.uid}/pendingBanNotif`), (snap) => {
         if (!snap.exists()) return;
-        const d = { ...snap.val(), type: "ban" };
+        const d = { ...snap.val() }; d.type = "ban";
         setWarnModal(d);
         remove(ref(db, `users/${u.uid}/pendingBanNotif`)).catch(() => {});
       });
