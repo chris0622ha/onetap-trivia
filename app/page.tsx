@@ -1,4 +1,4 @@
-"use client";
+"use client"; // build:1780698139
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { db, auth, googleProvider } from "./lib/firebase";
