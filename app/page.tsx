@@ -2038,6 +2038,135 @@ export default function Home() {
   ];
 
 
+
+function LeaderboardView({ globalLB }: { globalLB: any[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const [catFilter, setCatFilter] = useState("all");
+  const [roundFilter, setRoundFilter] = useState(0);
+  const [timerFilter, setTimerFilter] = useState(0);
+  const [diffFilter, setDiffFilter] = useState("all");
+  const INITIAL = 5;
+
+  const filtered = globalLB.filter(e => {
+    if (catFilter !== "all" && e.category !== catFilter) return false;
+    if (roundFilter !== 0 && e.roundSize !== roundFilter) return false;
+    const bucket = TIMER_BUCKETS[timerFilter];
+    if (timerFilter !== 0) {
+      const t = e.timerDuration ?? 0;
+      if (bucket.min === 0 && bucket.max === 0) { if (t !== 0) return false; }
+      else { if (t < bucket.min || t > bucket.max) return false; }
+    }
+    if (diffFilter !== "all" && e.difficulty !== diffFilter) return false;
+    return true;
+  }).sort((a, b) => b.score - a.score);
+
+  const visible = expanded ? filtered : filtered.slice(0, INITIAL);
+
+  const Pill = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
+    <button onClick={onClick} style={{
+      background: active ? "rgba(245,158,11,0.2)" : "rgba(255,255,255,0.04)",
+      border: `1px solid ${active ? "#f59e0b" : "#2d2d44"}`,
+      borderRadius: 99, color: active ? "#f59e0b" : "#6b7280",
+      fontSize: 11, fontWeight: 700, padding: "4px 10px", cursor: "pointer",
+      whiteSpace: "nowrap" as const, flexShrink: 0,
+    }}>{label}</button>
+  );
+
+  if (globalLB.length === 0) return null;
+  return (
+    <div style={{ width:"100%", maxWidth:400, background:"#1a1a2e", borderRadius:16, padding:"20px" }}>
+      <div style={{ fontSize:13, color:"#f59e0b", marginBottom:12, letterSpacing:"0.1em", textTransform:"uppercase", fontWeight:700 }}>
+        🏆 Global Leaderboard
+      </div>
+
+      {/* Category filter */}
+      <div style={{ fontSize:10, color:"#4b5563", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Category</div>
+      <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
+        <Pill label="All" active={catFilter === "all"} onClick={() => setCatFilter("all")} />
+        {Object.entries(CATEGORY_MAP).filter(([k]) => k !== "all").map(([k, v]) => (
+          <Pill key={k} label={`${v.emoji} ${v.label}`} active={catFilter === k} onClick={() => setCatFilter(k)} />
+        ))}
+      </div>
+
+      {/* Questions filter */}
+      <div style={{ fontSize:10, color:"#4b5563", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Questions</div>
+      <div style={{ display:"flex", gap:5, marginBottom:10 }}>
+        {[["All", 0], ["10", 10], ["20", 20], ["30", 30]].map(([label, val]) => (
+          <Pill key={val} label={label as string} active={roundFilter === val} onClick={() => setRoundFilter(val as number)} />
+        ))}
+      </div>
+
+      {/* Timer filter */}
+      <div style={{ fontSize:10, color:"#4b5563", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Time limit</div>
+      <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
+        {TIMER_BUCKETS.map((b, i) => (
+          <Pill key={i} label={b.label} active={timerFilter === i} onClick={() => setTimerFilter(i)} />
+        ))}
+      </div>
+
+      {/* Difficulty filter */}
+      <div style={{ fontSize:10, color:"#4b5563", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Difficulty</div>
+      <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:14 }}>
+        {([["all","All","#6b7280"],["easy","🟢 Easy","#10b981"],["medium","🟡 Medium","#f59e0b"],["hard","🔴 Hard","#ef4444"],["mixed","🌈 Mixed","#a855f7"]] as const).map(([d,label,col]) => (
+          <button key={d} onClick={() => setDiffFilter(d)} style={{
+            background: diffFilter===d ? `rgba(${d==="easy"?"16,185,129":d==="medium"?"245,158,11":d==="hard"?"239,68,68":d==="mixed"?"168,85,247":"107,114,128"},0.2)` : "rgba(255,255,255,0.04)",
+            border: `1px solid ${diffFilter===d ? col : "#2d2d44"}`,
+            borderRadius:99, color: diffFilter===d ? col : "#6b7280",
+            fontSize:11, fontWeight:700, padding:"4px 10px", cursor:"pointer", whiteSpace:"nowrap" as const, flexShrink:0,
+          }}>{label}</button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{ color:"#4b5563", fontSize:13, textAlign:"center", padding:"16px 0" }}>No scores yet for this combination</div>
+      ) : (
+        <>
+          <div style={{ maxHeight: expanded ? 420 : "none", overflowY: expanded ? "auto" : "visible" }}>
+            {visible.map((e, i) => {
+              const rankLabel = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`;
+              const rankColor = i < 3 ? undefined : "#4b5563";
+              const timerLabel = e.timerDuration === 0 ? "∞" : e.timerDuration != null ? `${e.timerDuration}s` : "—";
+              return (
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 6px", borderBottom:"1px solid #2d2d44" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <span style={{ fontSize: i < 3 ? 18 : 12, fontWeight:800, color: rankColor, width:28, textAlign:"right", flexShrink:0 }}>{rankLabel}</span>
+                    <div>
+                      <span onClick={() => e.uid && setViewedUser(e.uid)} style={{ color:"#e5e7eb", fontWeight:600, fontSize:14, cursor: e.uid ? "pointer" : "default" }}>{e.name}</span>
+                      <BadgeIcon badge={e.badge} size={13} />
+                      <div style={{ fontSize:10, color:"#4b5563" }}>
+                        {CATEGORY_MAP[e.category]?.emoji} {CATEGORY_MAP[e.category]?.label ?? e.category}
+                        {e.roundSize != null ? ` · ${e.roundSize}Q` : ""}
+                        {` · ${timerLabel}`}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign:"right", display:"flex", flexDirection:"column", alignItems:"flex-end", gap:2 }}>
+                    <div style={{ color:"#f59e0b", fontWeight:800, fontSize:16 }}>{e.score}</div>
+                    <div style={{ color:"#6b7280", fontSize:11 }}>🔥{e.streak}</div>
+                    {user && (
+                      <button onClick={() => setReportTarget(e)} style={{ background:"transparent", border:"none", color:"#4b5563", fontSize:10, cursor:"pointer", padding:0, marginTop:1 }}>
+                        🚩 report
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {filtered.length > INITIAL && (
+            <button onClick={() => setExpanded(x => !x)}
+              style={{ width:"100%", background:"transparent", border:"none", color:"#6b7280",
+                fontSize:12, fontWeight:600, padding:"10px 0 0", cursor:"pointer",
+                letterSpacing:"0.05em", textTransform:"uppercase" }}>
+              {expanded ? "Show less ▲" : "Show all ▼"}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── SEARCH USERS MODAL ───────────────────────────────────────────────────────
 function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile }: {
   currentUser: User | null;
@@ -2159,133 +2288,6 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
   );
 }
 
-  const LeaderboardView = () => {
-    const [expanded, setExpanded] = useState(false);
-    const [catFilter, setCatFilter] = useState("all");
-    const [roundFilter, setRoundFilter] = useState(0);
-    const [timerFilter, setTimerFilter] = useState(0);
-    const [diffFilter, setDiffFilter] = useState("all");
-    const INITIAL = 5;
-
-    const filtered = globalLB.filter(e => {
-      if (catFilter !== "all" && e.category !== catFilter) return false;
-      if (roundFilter !== 0 && e.roundSize !== roundFilter) return false;
-      const bucket = TIMER_BUCKETS[timerFilter];
-      if (timerFilter !== 0) {
-        const t = e.timerDuration ?? 0;
-        if (bucket.min === 0 && bucket.max === 0) { if (t !== 0) return false; }
-        else { if (t < bucket.min || t > bucket.max) return false; }
-      }
-      if (diffFilter !== "all" && e.difficulty !== diffFilter) return false;
-      return true;
-    }).sort((a, b) => b.score - a.score);
-
-    const visible = expanded ? filtered : filtered.slice(0, INITIAL);
-
-    const Pill = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
-      <button onClick={onClick} style={{
-        background: active ? "rgba(245,158,11,0.2)" : "rgba(255,255,255,0.04)",
-        border: `1px solid ${active ? "#f59e0b" : "#2d2d44"}`,
-        borderRadius: 99, color: active ? "#f59e0b" : "#6b7280",
-        fontSize: 11, fontWeight: 700, padding: "4px 10px", cursor: "pointer",
-        whiteSpace: "nowrap" as const, flexShrink: 0,
-      }}>{label}</button>
-    );
-
-    if (globalLB.length === 0) return null;
-    return (
-      <div style={{ width:"100%", maxWidth:400, background:"#1a1a2e", borderRadius:16, padding:"20px" }}>
-        <div style={{ fontSize:13, color:"#f59e0b", marginBottom:12, letterSpacing:"0.1em", textTransform:"uppercase", fontWeight:700 }}>
-          🏆 Global Leaderboard
-        </div>
-
-        {/* Category filter */}
-        <div style={{ fontSize:10, color:"#4b5563", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Category</div>
-        <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
-          <Pill label="All" active={catFilter === "all"} onClick={() => setCatFilter("all")} />
-          {Object.entries(CATEGORY_MAP).filter(([k]) => k !== "all").map(([k, v]) => (
-            <Pill key={k} label={`${v.emoji} ${v.label}`} active={catFilter === k} onClick={() => setCatFilter(k)} />
-          ))}
-        </div>
-
-        {/* Questions filter */}
-        <div style={{ fontSize:10, color:"#4b5563", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Questions</div>
-        <div style={{ display:"flex", gap:5, marginBottom:10 }}>
-          {[["All", 0], ["10", 10], ["20", 20], ["30", 30]].map(([label, val]) => (
-            <Pill key={val} label={label as string} active={roundFilter === val} onClick={() => setRoundFilter(val as number)} />
-          ))}
-        </div>
-
-        {/* Timer filter */}
-        <div style={{ fontSize:10, color:"#4b5563", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Time limit</div>
-        <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
-          {TIMER_BUCKETS.map((b, i) => (
-            <Pill key={i} label={b.label} active={timerFilter === i} onClick={() => setTimerFilter(i)} />
-          ))}
-        </div>
-
-        {/* Difficulty filter */}
-        <div style={{ fontSize:10, color:"#4b5563", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Difficulty</div>
-        <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:14 }}>
-          {([["all","All","#6b7280"],["easy","🟢 Easy","#10b981"],["medium","🟡 Medium","#f59e0b"],["hard","🔴 Hard","#ef4444"],["mixed","🌈 Mixed","#a855f7"]] as const).map(([d,label,col]) => (
-            <button key={d} onClick={() => setDiffFilter(d)} style={{
-              background: diffFilter===d ? `rgba(${d==="easy"?"16,185,129":d==="medium"?"245,158,11":d==="hard"?"239,68,68":d==="mixed"?"168,85,247":"107,114,128"},0.2)` : "rgba(255,255,255,0.04)",
-              border: `1px solid ${diffFilter===d ? col : "#2d2d44"}`,
-              borderRadius:99, color: diffFilter===d ? col : "#6b7280",
-              fontSize:11, fontWeight:700, padding:"4px 10px", cursor:"pointer", whiteSpace:"nowrap" as const, flexShrink:0,
-            }}>{label}</button>
-          ))}
-        </div>
-
-        {filtered.length === 0 ? (
-          <div style={{ color:"#4b5563", fontSize:13, textAlign:"center", padding:"16px 0" }}>No scores yet for this combination</div>
-        ) : (
-          <>
-            <div style={{ maxHeight: expanded ? 420 : "none", overflowY: expanded ? "auto" : "visible" }}>
-              {visible.map((e, i) => {
-                const rankLabel = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`;
-                const rankColor = i < 3 ? undefined : "#4b5563";
-                const timerLabel = e.timerDuration === 0 ? "∞" : e.timerDuration != null ? `${e.timerDuration}s` : "—";
-                return (
-                  <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 6px", borderBottom:"1px solid #2d2d44" }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                      <span style={{ fontSize: i < 3 ? 18 : 12, fontWeight:800, color: rankColor, width:28, textAlign:"right", flexShrink:0 }}>{rankLabel}</span>
-                      <div>
-                        <span onClick={() => e.uid && setViewedUser(e.uid)} style={{ color:"#e5e7eb", fontWeight:600, fontSize:14, cursor: e.uid ? "pointer" : "default" }}>{e.name}</span>
-                        <BadgeIcon badge={e.badge} size={13} />
-                        <div style={{ fontSize:10, color:"#4b5563" }}>
-                          {CATEGORY_MAP[e.category]?.emoji} {CATEGORY_MAP[e.category]?.label ?? e.category}
-                          {e.roundSize != null ? ` · ${e.roundSize}Q` : ""}
-                          {` · ${timerLabel}`}
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ textAlign:"right", display:"flex", flexDirection:"column", alignItems:"flex-end", gap:2 }}>
-                      <div style={{ color:"#f59e0b", fontWeight:800, fontSize:16 }}>{e.score}</div>
-                      <div style={{ color:"#6b7280", fontSize:11 }}>🔥{e.streak}</div>
-                      {user && (
-                        <button onClick={() => setReportTarget(e)} style={{ background:"transparent", border:"none", color:"#4b5563", fontSize:10, cursor:"pointer", padding:0, marginTop:1 }}>
-                          🚩 report
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {filtered.length > INITIAL && (
-              <button onClick={() => setExpanded(x => !x)}
-                style={{ width:"100%", background:"transparent", border:"none", color:"#6b7280",
-                  fontSize:12, fontWeight:600, padding:"10px 0 0", cursor:"pointer",
-                  letterSpacing:"0.05em", textTransform:"uppercase" }}>
-                {expanded ? "Show less ▲" : "Show all ▼"}
-              </button>
-            )}
-          </>
-        )}
-      </div>
-    );
-  };
 
   // ── HOME ──────────────────────────────────────────────────────────────────────
   // Maintenance mode — block non-admins
@@ -2605,7 +2607,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
               Join Game →
             </button>
           </div>
-          <LeaderboardView />
+          <LeaderboardView globalLB={globalLB} />
         </div>
       </div>
 
@@ -2650,7 +2652,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
           <button onClick={() => startGame(r.category, roundSize, timerDuration)} style={{ background:"linear-gradient(135deg, #f59e0b, #ef4444)", border:"none", borderRadius:12, color:"#fff", fontSize:"1rem", fontWeight:800, padding:"14px 28px", cursor:"pointer" }}>PLAY AGAIN ⚡</button>
           <button onClick={() => setScreen("home")} style={{ background:"#1a1a2e", border:"1px solid #2d2d44", borderRadius:12, color:"#9ca3af", fontSize:"1rem", fontWeight:600, padding:"14px 28px", cursor:"pointer" }}>Home</button>
         </div>
-        <LeaderboardView />
+        <LeaderboardView globalLB={globalLB} />
       </div>
     );
   }
