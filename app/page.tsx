@@ -226,6 +226,113 @@ function UsernamePickerModal({ user, onDone }: { user: User; onDone: (username: 
 
 // ── Profile Modal ─────────────────────────────────────────────────────────────
 
+// ── PUBLIC USER PROFILE VIEW ─────────────────────────────────────────────────
+function UserProfileView({ uid, onClose, onSendFriendRequest }: {
+  uid: string;
+  onClose: () => void;
+  onSendFriendRequest?: (uid: string, username: string) => void;
+}) {
+  const [profileData, setProfileData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const CAT_EMOJI: Record<string,string> = { geography:"🗺️", science:"🔬", history:"📜", math:"🔢", sports:"⚽", entertainment:"🎬" };
+
+  useEffect(() => {
+    get(ref(db, `users/${uid}`)).then(snap => {
+      if (snap.exists()) setProfileData({ uid, ...snap.val() });
+      setLoading(false);
+    });
+  }, [uid]);
+
+  if (loading) return (
+    <div onClick={onClose} style={{ position:"fixed" as const, inset:0, background:"rgba(0,0,0,0.85)", zIndex:400, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ color:"#6b7280" }}>Loading…</div>
+    </div>
+  );
+  if (!profileData) return (
+    <div onClick={onClose} style={{ position:"fixed" as const, inset:0, background:"rgba(0,0,0,0.85)", zIndex:400, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ color:"#ef4444" }}>User not found</div>
+    </div>
+  );
+  const p = profileData;
+  const acc = p.totalQuestions ? Math.round((p.totalCorrect||0)/p.totalQuestions*100) : 0;
+
+  return (
+    <div onClick={onClose} style={{ position:"fixed" as const, inset:0, background:"rgba(0,0,0,0.85)", zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:"#1a1a2e", border:"1px solid #2d2d44", borderRadius:20, width:"100%", maxWidth:400, maxHeight:"88vh", overflowY:"auto" as const, color:"#fff" }}>
+        {/* Header */}
+        <div style={{ padding:"20px 20px 0", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+            {p.photoURL
+              ? <img src={p.photoURL} width={56} height={56} style={{ borderRadius:"50%", border:"3px solid #f59e0b", objectFit:"cover" as const }} />
+              : <div style={{ width:56, height:56, borderRadius:"50%", background:"rgba(245,158,11,0.2)", border:"3px solid #f59e0b", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:900, color:"#f59e0b" }}>{(p.username||"?")[0].toUpperCase()}</div>
+            }
+            <div>
+              <div style={{ fontWeight:900, fontSize:"1.1rem", display:"flex", alignItems:"center", gap:6 }}>
+                {p.username} <BadgeIcon badge={p.badge} size={15} />
+              </div>
+              {p.status?.preset && p.status.preset !== "online" && (
+                <div style={{ fontSize:12, color:"#6b7280" }}>
+                  {p.status.preset === "dnd" && "⛔ DND"}
+                  {p.status.preset === "sleeping" && "😴 Sleeping"}
+                  {p.status.preset === "focused" && "🎯 Focused"}
+                  {p.status.preset === "custom" && p.status.custom}
+                </div>
+              )}
+              {p.bio && <div style={{ fontSize:13, color:"#9ca3af", marginTop:4, fontStyle:"italic" as const }}>"{p.bio}"</div>}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6b7280", fontSize:22, cursor:"pointer" }}>×</button>
+        </div>
+
+        <div style={{ padding:"16px 20px 20px" }}>
+          {/* Friend button */}
+          {onSendFriendRequest && (
+            <button onClick={() => onSendFriendRequest(uid, p.username)} style={{ width:"100%", background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.3)", borderRadius:10, color:"#f59e0b", fontWeight:700, fontSize:13, padding:"9px", cursor:"pointer", marginBottom:16 }}>
+              👥 Add Friend
+            </button>
+          )}
+
+          {/* Stats */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:16 }}>
+            {[["Best Score", p.bestScore||0, "#f59e0b"], ["Games", p.gamesPlayed||0, "#10b981"], ["Streak", p.bestStreak||0, "#ef4444"],
+              ["Correct", p.totalCorrect||0, "#6366f1"], ["Accuracy", acc+"%", "#a855f7"], ["Duels", p.duelsPlayed||0, "#60a5fa"]].map(([l,v,col]) => (
+              <div key={l as string} style={{ background:"#0f0f1a", borderRadius:10, padding:"10px", textAlign:"center" as const }}>
+                <div style={{ fontSize:18, fontWeight:900, color:col as string }}>{v as any}</div>
+                <div style={{ fontSize:10, color:"#6b7280", marginTop:2 }}>{l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Duel record */}
+          {(p.duelsPlayed||0) > 0 && (
+            <div style={{ background:"#0f0f1a", borderRadius:12, padding:"12px 16px", marginBottom:16, display:"flex", justifyContent:"space-around" }}>
+              {[["Wins",p.duelWins||0,"#10b981"],["Losses",p.duelLosses||0,"#ef4444"],["Draws",p.duelDraws||0,"#6b7280"]].map(([l,v,col])=>(
+                <div key={l as string} style={{ textAlign:"center" as const }}>
+                  <div style={{ fontSize:20, fontWeight:900, color:col as string }}>{v as number}</div>
+                  <div style={{ fontSize:11, color:"#4b5563" }}>{l}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Category bests */}
+          {p.categoryBests && Object.keys(p.categoryBests).length > 0 && (
+            <div style={{ background:"#0f0f1a", borderRadius:12, padding:"12px 16px" }}>
+              <div style={{ fontSize:11, color:"#6b7280", textTransform:"uppercase" as const, letterSpacing:"0.05em", marginBottom:8 }}>Category Bests</div>
+              {Object.entries(p.categoryBests as Record<string,any>).map(([cat,data]: [string,any]) => (
+                <div key={cat} style={{ display:"flex", justifyContent:"space-between", padding:"4px 0", borderBottom:"1px solid #1e1e30", fontSize:13 }}>
+                  <span>{CAT_EMOJI[cat]||"❓"} {cat}</span>
+                  <span style={{ color:"#f59e0b", fontWeight:700 }}>{data?.score || data}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProfileModal({ user, userData, onClose, onUserDataChange }: {
   user: User; userData: any; onClose: () => void; onUserDataChange: (d: any) => void;
 }) {
@@ -234,6 +341,7 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
   // Edit tab state
   const [newUsername, setNewUsername] = useState(userData?.username || "");
   const [newPhotoURL, setNewPhotoURL] = useState(userData?.photoURL || user.photoURL || "");
+  const [newBio, setNewBio] = useState(userData?.bio || "");
   const [usernameError, setUsernameError] = useState("");
   const [photoError, setPhotoError] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -348,6 +456,7 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
       username: trimmed,
       displayName: trimmed,
       photoURL: newPhotoURL || user.photoURL || null,
+      bio: newBio.trim().slice(0, 150) || null,
     };
     if (trimmed !== userData?.username) {
       updates.usernameChangesLeft = changesLeft - 1;
@@ -485,6 +594,7 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
               {displayName}
               <BadgeIcon badge={userData?.badge} size={16} />
             </div>
+            {userData?.bio && <div style={{ fontSize:12, color:"#9ca3af", marginTop:3, fontStyle:"italic" as const }}>"{userData.bio}"</div>}
             <div style={{ fontSize:11, color:"#6b7280", marginTop:2 }}>
               Friend ID: <span style={{ color:"#9ca3af", fontFamily:"monospace", fontSize:11 }}>{user.uid.slice(0,12)}…</span>
             </div>
@@ -550,6 +660,21 @@ function ProfileModal({ user, userData, onClose, onUserDataChange }: {
 
           {/* EDIT TAB */}
           {tab === "edit" && (<>
+            {/* Bio */}
+            <div style={{ marginBottom:18 }}>
+              <div style={{ fontSize:11, color:"#6b7280", textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:8 }}>
+                Bio / Description
+              </div>
+              <textarea
+                value={newBio}
+                onChange={e => setNewBio(e.target.value.slice(0,150))}
+                placeholder="Tell people about yourself… (150 chars max)"
+                rows={3}
+                style={{ width:"100%", background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:10, color:"#fff", fontSize:13, padding:"11px 14px", resize:"none" as const, boxSizing:"border-box" as const, outline:"none" }}
+              />
+              <div style={{ fontSize:11, color:"#4b5563", textAlign:"right" as const, marginTop:4 }}>{newBio.length}/150</div>
+            </div>
+
             <div style={{ marginBottom:18 }}>
               <div style={{ fontSize:11, color:"#6b7280", textTransform:"uppercase",
                 letterSpacing:"0.05em", marginBottom:8 }}>
@@ -1280,8 +1405,9 @@ export default function Home() {
   const [userData, setUserData] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showUsernamePicker, setShowUsernamePicker] = useState(false);
-  const [modal, setModal] = useState<"about"|"updates"|"profile"|null>(null);
+  const [modal, setModal] = useState<"about"|"updates"|"profile"|"search"|null>(null);
   const [warnModal, setWarnModal] = useState<any>(null);
+  const [viewedUser, setViewedUser] = useState<any>(null); // for public profile viewing
   const [reportTarget, setReportTarget] = useState<any>(null);
   const [showLangModal, setShowLangModal] = useState(false);
   const [currentLang, setCurrentLang] = useState("en");
@@ -1891,6 +2017,128 @@ export default function Home() {
     { label: "∞",        min: 0,   max: 0 },
   ];
 
+
+// ── SEARCH USERS MODAL ───────────────────────────────────────────────────────
+function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile }: {
+  currentUser: User | null;
+  currentUserData: any;
+  onClose: () => void;
+  onViewProfile: (uid: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [sent, setSent] = useState<Record<string,boolean>>({});
+
+  async function search() {
+    if (!query.trim()) return;
+    setSearching(true);
+    const q = query.trim().toLowerCase();
+    try {
+      // Try exact username first
+      const uidByUsername = await get(ref(db, `usernames/${q}`));
+      const uids: string[] = [];
+      if (uidByUsername.exists()) uids.push(uidByUsername.val());
+
+      // Try as UID directly
+      if (query.trim().length > 10) {
+        const byUid = await get(ref(db, `users/${query.trim()}`));
+        if (byUid.exists() && !uids.includes(query.trim())) uids.push(query.trim());
+      }
+
+      // Partial username search — scan all usernames
+      if (uids.length === 0) {
+        const allUsernames = await get(ref(db, "usernames"));
+        if (allUsernames.exists()) {
+          Object.entries(allUsernames.val() as Record<string,string>).forEach(([username, uid]) => {
+            if (username.includes(q) && !uids.includes(uid)) uids.push(uid);
+          });
+        }
+      }
+
+      const profiles = await Promise.all(
+        uids.slice(0,10).map(uid => get(ref(db, `users/${uid}`)).then(s => s.exists() ? {uid,...s.val()} : null))
+      );
+      setResults(profiles.filter(Boolean) as any[]);
+    } catch {}
+    setSearching(false);
+  }
+
+  async function addFriend(target: any) {
+    if (!currentUser || !currentUserData) return;
+    // Check if already friends
+    const alreadyFriends = await get(ref(db, `friendRequests/${target.uid}/${currentUser.uid}`));
+    await set(ref(db, `friendRequests/${target.uid}/${currentUser.uid}`), {
+      fromUid: currentUser.uid,
+      fromUsername: currentUserData.username || "Someone",
+      fromPhotoURL: currentUserData.photoURL || currentUser.photoURL || null,
+      sentAt: Date.now(),
+    });
+    // Notify
+    if (target.fcmToken) {
+      fetch("/api/send-notification", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ token: target.fcmToken, title:"👥 Friend Request", body:"wants to be friends!", url:"/", sender: currentUserData.username }),
+      }).catch(()=>{});
+    }
+    setSent(s => ({...s, [target.uid]: true}));
+  }
+
+  return (
+    <div onClick={onClose} style={{ position:"fixed" as const, inset:0, background:"rgba(0,0,0,0.85)", zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:"#1a1a2e", border:"1px solid #2d2d44", borderRadius:20, width:"100%", maxWidth:420, maxHeight:"80vh", display:"flex", flexDirection:"column" as const, color:"#fff" }}>
+        <div style={{ padding:"20px 20px 0", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+          <div style={{ fontWeight:900, fontSize:"1.1rem" }}>🔍 Search Users</div>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6b7280", fontSize:22, cursor:"pointer" }}>×</button>
+        </div>
+        <div style={{ padding:"0 20px 16px", display:"flex", gap:8 }}>
+          <input
+            value={query} onChange={e=>setQuery(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&search()}
+            placeholder="Username or Friend ID…"
+            style={{ flex:1, background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:10, color:"#fff", fontSize:14, padding:"10px 14px", outline:"none" }}
+          />
+          <button onClick={search} disabled={searching} style={{ background:"rgba(245,158,11,0.2)", border:"1px solid rgba(245,158,11,0.4)", borderRadius:10, color:"#f59e0b", fontWeight:700, fontSize:14, padding:"10px 16px", cursor:"pointer" }}>
+            {searching ? "…" : "Search"}
+          </button>
+        </div>
+        <div style={{ flex:1, overflowY:"auto" as const, padding:"0 20px 20px" }}>
+          {results.length === 0 && query && !searching && (
+            <div style={{ color:"#4b5563", textAlign:"center" as const, padding:"20px 0" }}>No users found</div>
+          )}
+          {results.map(u => (
+            <div key={u.uid} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:"1px solid #2d2d44" }}>
+              <div onClick={() => { onClose(); onViewProfile(u.uid); }} style={{ cursor:"pointer", flexShrink:0 }}>
+                {u.photoURL
+                  ? <img src={u.photoURL} width={40} height={40} style={{ borderRadius:"50%", border:"2px solid #2d2d44", objectFit:"cover" as const }} />
+                  : <div style={{ width:40, height:40, borderRadius:"50%", background:"rgba(245,158,11,0.15)", border:"2px solid #2d2d44", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, color:"#f59e0b" }}>{(u.username||"?")[0].toUpperCase()}</div>
+                }
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div onClick={() => { onClose(); onViewProfile(u.uid); }} style={{ fontWeight:700, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
+                  {u.username} <BadgeIcon badge={u.badge} size={12} />
+                </div>
+                {u.bio && <div style={{ fontSize:12, color:"#6b7280", fontStyle:"italic" as const }}>"{u.bio}"</div>}
+                <div style={{ fontSize:11, color:"#4b5563" }}>Best: {u.bestScore||0}</div>
+              </div>
+              {currentUser && u.uid !== currentUser.uid && (
+                <button onClick={() => addFriend(u)} disabled={sent[u.uid]} style={{
+                  background: sent[u.uid] ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)",
+                  border:`1px solid ${sent[u.uid] ? "rgba(16,185,129,0.4)" : "rgba(245,158,11,0.4)"}`,
+                  borderRadius:8, color: sent[u.uid] ? "#10b981" : "#f59e0b",
+                  fontSize:12, fontWeight:700, padding:"6px 12px", cursor: sent[u.uid] ? "default" : "pointer", flexShrink:0,
+                }}>
+                  {sent[u.uid] ? "Sent ✓" : "Add"}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
   const LeaderboardView = () => {
     const [expanded, setExpanded] = useState(false);
     const [catFilter, setCatFilter] = useState("all");
@@ -1983,7 +2231,7 @@ export default function Home() {
                     <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                       <span style={{ fontSize: i < 3 ? 18 : 12, fontWeight:800, color: rankColor, width:28, textAlign:"right", flexShrink:0 }}>{rankLabel}</span>
                       <div>
-                        <span style={{ color:"#e5e7eb", fontWeight:600, fontSize:14 }}>{e.name}</span>
+                        <span onClick={() => e.uid && setViewedUser(e.uid)} style={{ color:"#e5e7eb", fontWeight:600, fontSize:14, cursor: e.uid ? "pointer" : "default" }}>{e.name}</span>
                         <BadgeIcon badge={e.badge} size={13} />
                         <div style={{ fontSize:10, color:"#4b5563" }}>
                           {CATEGORY_MAP[e.category]?.emoji} {CATEGORY_MAP[e.category]?.label ?? e.category}
@@ -2093,6 +2341,33 @@ export default function Home() {
       )}
       {showLangModal && (
         <LangModal currentLang={currentLang} onSelect={(lang) => { setCurrentLang(lang); setShowLangModal(false); }} onClose={() => setShowLangModal(false)} />
+      )}
+
+      {/* Search Users modal */}
+      {modal === "search" && (
+        <SearchUsersModal
+          currentUser={user}
+          currentUserData={userData}
+          onClose={() => setModal(null)}
+          onViewProfile={(uid) => { setModal(null); setViewedUser(uid); }}
+        />
+      )}
+
+      {/* Public profile view */}
+      {viewedUser && (
+        <UserProfileView
+          uid={viewedUser}
+          onClose={() => setViewedUser(null)}
+          onSendFriendRequest={user ? async (targetUid, targetUsername) => {
+            if (targetUid === user.uid) return;
+            await set(ref(db, `friendRequests/${targetUid}/${user.uid}`), {
+              fromUsername: userData?.username || user.displayName?.split(" ")[0] || "Someone",
+              fromPhotoURL: userData?.photoURL || user.photoURL || null,
+              sentAt: Date.now(),
+            });
+            setViewedUser(null);
+          } : undefined}
+        />
       )}
 
       {/* Warn / Ban popup */}
@@ -2286,6 +2561,15 @@ export default function Home() {
             <span>Duels</span>
             <span style={{ fontSize:12, fontWeight:600, opacity:0.8, background:"rgba(0,0,0,0.2)", borderRadius:99, padding:"2px 8px" }}>1v1</span>
           </a>
+
+          <button onClick={() => setModal("search")} style={{
+            display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+            width:"100%", background:"rgba(255,255,255,0.04)", border:"1px solid #2d2d44",
+            borderRadius:14, color:"#9ca3af", fontSize:"1rem", fontWeight:700,
+            padding:"14px", cursor:"pointer", boxSizing:"border-box" as const,
+          }}>
+            🔍 Search Users
+          </button>
         </div>
 
         {/* RIGHT — Multiplayer + Leaderboard */}
