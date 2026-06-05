@@ -1612,131 +1612,138 @@ function ActivityLogPanel() {
 
 // ── IMPERSONATE VIEW ─────────────────────────────────────────────────────────
 function ImpersonateView({ userData, onClose }: { userData: any; onClose: () => void }) {
-  const CAT_EMOJI: Record<string,string> = { geography:"🗺️", science:"🔬", history:"📜", math:"🔢", sports:"⚽", entertainment:"🎬" };
+  const CAT = {
+    geography:{emoji:"🗺️",label:"Geography"},
+    science:{emoji:"🔬",label:"Science"},
+    history:{emoji:"📜",label:"History"},
+    math:{emoji:"🔢",label:"Math"},
+    sports:{emoji:"⚽",label:"Sports"},
+    entertainment:{emoji:"🎬",label:"Entertainment"},
+  } as Record<string,{emoji:string;label:string}>;
+  const acc = userData.totalQuestions ? Math.round((userData.totalCorrect||0)/userData.totalQuestions*100) : 0;
+  const u = userData;
 
   return (
-    <div style={{ marginTop:12 }}>
+    <div style={{ marginTop:12, border:"2px solid rgba(239,68,68,0.5)", borderRadius:14, overflow:"hidden" }}>
       {/* Admin banner */}
-      <div style={{ background:"rgba(239,68,68,0.15)", border:"1px solid rgba(239,68,68,0.5)", borderRadius:10, padding:"8px 14px", marginBottom:16, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-        <span style={{ color:"#ef4444", fontWeight:700, fontSize:13 }}>👁️ ADMIN PREVIEW — {userData.username}</span>
-        <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#ef4444", fontSize:18, cursor:"pointer" }}>×</button>
+      <div style={{ background:"rgba(239,68,68,0.2)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <span style={{ color:"#ef4444", fontWeight:700, fontSize:13 }}>👁️ ADMIN VIEW — seeing as {u.username}</span>
+        <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#ef4444", fontSize:20, cursor:"pointer" }}>×</button>
       </div>
 
-      {/* Profile card */}
-      <div style={{ background:"#0f0f1a", borderRadius:14, padding:"16px", marginBottom:12, display:"flex", alignItems:"center", gap:14 }}>
-        {userData.photoURL
-          ? <img src={userData.photoURL} alt="" width={56} height={56} style={{ borderRadius:"50%", border:"3px solid #f59e0b" }} />
-          : <div style={{ width:56, height:56, borderRadius:"50%", background:"rgba(245,158,11,0.2)", border:"3px solid #f59e0b", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:900, color:"#f59e0b" }}>{(userData.username||"?")[0].toUpperCase()}</div>
-        }
-        <div style={{ flex:1 }}>
-          <div style={{ fontWeight:900, fontSize:"1.1rem", display:"flex", alignItems:"center", gap:6 }}>
-            {userData.username} <BadgeIcon badge={userData.badge} size={16} />
-          </div>
-          {userData.status?.preset && userData.status.preset !== "online" && (
-            <div style={{ fontSize:12, color:"#6b7280", marginTop:2 }}>
-              {userData.status.preset === "dnd" && "⛔ Do Not Disturb"}
-              {userData.status.preset === "sleeping" && "😴 Sleeping"}
-              {userData.status.preset === "focused" && "🎯 Focused"}
-              {userData.status.preset === "custom" && `✏️ ${userData.status.custom}`}
-            </div>
-          )}
-          <div style={{ fontSize:12, color:"#6b7280", marginTop:2 }}>
-            {userData.isAdmin && <span style={{ color:"#f59e0b", marginRight:6 }}>⚡ Admin</span>}
-            Joined: {userData.loginHistory ? Object.values(userData.loginHistory as any).sort((a:any,b:any)=>a.ts-b.ts)[0] ? (Object.values(userData.loginHistory as any).sort((a:any,b:any)=>a.ts-b.ts)[0] as any).loginAt : "Unknown" : "Unknown"}
+      {/* Mock game screen */}
+      <div style={{ background:"#0a0a1a", padding:0, fontSize:14 }}>
+
+        {/* Mock header */}
+        <div style={{ background:"rgba(10,10,26,0.95)", borderBottom:"1px solid #2d2d44", padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ color:"#f59e0b", fontWeight:900, fontSize:16 }}>⚡ TrivQuic</div>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            {u.photoURL
+              ? <img src={u.photoURL} width={28} height={28} style={{ borderRadius:"50%", border:"2px solid #f59e0b" }} />
+              : <div style={{ width:28, height:28, borderRadius:"50%", background:"rgba(245,158,11,0.2)", border:"2px solid #f59e0b", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:900, color:"#f59e0b" }}>{(u.username||"?")[0].toUpperCase()}</div>
+            }
+            <span style={{ color:"#e5e7eb", fontWeight:700, fontSize:13 }}>{u.username}</span>
+            <BadgeIcon badge={u.badge} size={13} />
+            <span style={{ background:"rgba(239,68,68,0.15)", border:"1px solid rgba(239,68,68,0.4)", borderRadius:6, color:"#ef4444", fontSize:10, fontWeight:700, padding:"2px 6px" }}>Sign out</span>
           </div>
         </div>
-      </div>
 
-      {/* Stats grid */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:12 }}>
-        {[
-          ["Best Score", userData.bestScore||0, "#f59e0b"],
-          ["Games", userData.gamesPlayed||0, "#10b981"],
-          ["Best Streak", userData.bestStreak||0, "#ef4444"],
-          ["Correct", userData.totalCorrect||0, "#6366f1"],
-          ["Accuracy", userData.totalQuestions ? Math.round((userData.totalCorrect||0)/userData.totalQuestions*100)+"%" : "—", "#a855f7"],
-          ["Duels", userData.duelsPlayed||0, "#60a5fa"],
-        ].map(([l,v,col]) => (
-          <div key={l as string} style={{ background:"#0f0f1a", borderRadius:10, padding:"10px", textAlign:"center" as const }}>
-            <div style={{ fontSize:18, fontWeight:900, color:col as string }}>{v as any}</div>
-            <div style={{ fontSize:10, color:"#6b7280", marginTop:2 }}>{l}</div>
-          </div>
-        ))}
-      </div>
+        <div style={{ padding:"16px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+          {/* Left — Solo section mock */}
+          <div>
+            <div style={{ fontSize:11, color:"#f59e0b", fontWeight:700, letterSpacing:"0.1em", marginBottom:8 }}>⚡ SOLO</div>
 
-      {/* Duel stats */}
-      {(userData.duelsPlayed||0) > 0 && (
-        <div style={{ background:"#0f0f1a", borderRadius:12, padding:"12px 16px", marginBottom:12 }}>
-          <div style={{ fontSize:12, color:"#6b7280", marginBottom:8, textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>Duel Record</div>
-          <div style={{ display:"flex", gap:16 }}>
-            {[["Wins",userData.duelWins||0,"#10b981"],["Losses",userData.duelLosses||0,"#ef4444"],["Draws",userData.duelDraws||0,"#6b7280"]].map(([l,v,col])=>(
-              <div key={l as string} style={{ textAlign:"center" as const }}>
-                <div style={{ fontSize:20, fontWeight:900, color:col as string }}>{v as number}</div>
-                <div style={{ fontSize:11, color:"#4b5563" }}>{l}</div>
+            {/* Name input mock */}
+            <div style={{ background:"#1a1a2e", border:"1px solid #2d2d44", borderRadius:10, padding:"8px 12px", marginBottom:10, fontSize:13, color:"#9ca3af" }}>
+              {u.username}
+            </div>
+
+            {/* Categories */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:4, marginBottom:8 }}>
+              <div style={{ gridColumn:"1/-1", background:"rgba(245,158,11,0.15)", border:"1px solid #f59e0b", borderRadius:8, padding:"5px", textAlign:"center" as const, fontSize:11, fontWeight:700, color:"#f59e0b" }}>🌍 All</div>
+              {Object.values(CAT).map(c=>(
+                <div key={c.label} style={{ background:"rgba(255,255,255,0.04)", border:"1px solid #2d2d44", borderRadius:8, padding:"5px 4px", textAlign:"center" as const, fontSize:10, color:"#6b7280" }}>{c.emoji} {c.label}</div>
+              ))}
+            </div>
+
+            {/* Stats strip */}
+            <div style={{ background:"#1a1a2e", borderRadius:10, padding:"10px 12px", marginBottom:8 }}>
+              <div style={{ fontSize:10, color:"#6b7280", marginBottom:6, textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>Their Stats</div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
+                {[["🏆 Best",u.bestScore||0,"#f59e0b"],["🎮 Games",u.gamesPlayed||0,"#10b981"],["🔥 Streak",u.bestStreak||0,"#ef4444"],["✅ Correct",u.totalCorrect||0,"#6366f1"],["📊 Acc",acc+"%","#a855f7"],["⚔️ Duels",u.duelsPlayed||0,"#60a5fa"]].map(([l,v,col])=>(
+                  <div key={l as string} style={{ textAlign:"center" as const }}>
+                    <div style={{ fontSize:14, fontWeight:900, color:col as string }}>{v as any}</div>
+                    <div style={{ fontSize:9, color:"#4b5563" }}>{l}</div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Category bests */}
+            {u.categoryBests && Object.keys(u.categoryBests).length > 0 && (
+              <div style={{ background:"#1a1a2e", borderRadius:10, padding:"10px 12px" }}>
+                <div style={{ fontSize:10, color:"#6b7280", marginBottom:6, textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>Category Bests</div>
+                {Object.entries(u.categoryBests as Record<string,any>).map(([cat, data]: [string,any]) => (
+                  <div key={cat} style={{ display:"flex", justifyContent:"space-between", padding:"3px 0", fontSize:11, borderBottom:"1px solid #1e1e30" }}>
+                    <span style={{ color:"#9ca3af" }}>{CAT[cat]?.emoji||"❓"} {cat}</span>
+                    <span style={{ color:"#f59e0b", fontWeight:700 }}>{data?.score||data}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      )}
 
-      {/* Category bests */}
-      {userData.categoryBests && Object.keys(userData.categoryBests).length > 0 && (
-        <div style={{ background:"#0f0f1a", borderRadius:12, padding:"12px 16px", marginBottom:12 }}>
-          <div style={{ fontSize:12, color:"#6b7280", marginBottom:8, textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>Category Bests</div>
-          {Object.entries(userData.categoryBests as Record<string,any>).map(([cat, data]: [string, any]) => (
-            <div key={cat} style={{ display:"flex", justifyContent:"space-between", padding:"4px 0", borderBottom:"1px solid #1e1e30", fontSize:13 }}>
-              <span>{CAT_EMOJI[cat]||"❓"} {cat}</span>
-              <span style={{ color:"#f59e0b", fontWeight:700 }}>{data.score || data}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Friends */}
-      {userData._friends && userData._friends.length > 0 && (
-        <div style={{ background:"#0f0f1a", borderRadius:12, padding:"12px 16px", marginBottom:12 }}>
-          <div style={{ fontSize:12, color:"#6b7280", marginBottom:8, textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>Friends ({userData._friends.length})</div>
-          {userData._friends.map((f:any) => (
-            <div key={f.uid} style={{ display:"flex", alignItems:"center", gap:10, padding:"6px 0", borderBottom:"1px solid #1e1e30" }}>
-              <Avatar src={f.photoURL} name={f.username||"?"} size={28} />
-              <span style={{ fontWeight:600, fontSize:13 }}>{f.username}</span>
-              <BadgeIcon badge={f.badge} size={12} />
-              {userData.mutedUids && Object.values(userData.mutedUids as any).includes(f.uid) && (
-                <span style={{ fontSize:11, color:"#6b7280", marginLeft:"auto" }}>🔕 muted</span>
+          {/* Right — info */}
+          <div>
+            <div style={{ fontSize:11, color:"#a855f7", fontWeight:700, letterSpacing:"0.1em", marginBottom:8 }}>👤 PROFILE</div>
+            <div style={{ background:"#1a1a2e", borderRadius:10, padding:"10px 12px", marginBottom:8 }}>
+              <div style={{ fontWeight:700, display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                {u.username} <BadgeIcon badge={u.badge} size={13} />
+                {u.isAdmin && <span style={{ fontSize:10, color:"#f59e0b" }}>⚡ Admin</span>}
+              </div>
+              {u.bio && <div style={{ fontSize:11, color:"#9ca3af", fontStyle:"italic" as const, marginBottom:4 }}>"{u.bio}"</div>}
+              {u.status?.preset && u.status.preset !== "online" && (
+                <div style={{ fontSize:11, color:"#6b7280" }}>
+                  {u.status.preset==="dnd"&&"⛔ DND"}{u.status.preset==="sleeping"&&"😴 Sleeping"}
+                  {u.status.preset==="focused"&&"🎯 Focused"}{u.status.preset==="custom"&&u.status.custom}
+                </div>
               )}
+              <div style={{ fontSize:10, color:"#4b5563", marginTop:4 }}>UID: {(u.uid||"").slice(0,16)}…</div>
             </div>
-          ))}
-        </div>
-      )}
 
-      {/* Notifications */}
-      <div style={{ background:"#0f0f1a", borderRadius:12, padding:"12px 16px", marginBottom:12, fontSize:13 }}>
-        <div style={{ fontSize:12, color:"#6b7280", marginBottom:6, textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>Notifications</div>
-        <div style={{ color: userData.fcmToken ? "#10b981" : "#ef4444" }}>
-          {userData.fcmToken ? "✅ Push enabled" : "❌ No FCM token — push disabled"}
-        </div>
-        <div style={{ color: userData.status?.notif === false ? "#ef4444" : "#10b981", marginTop:4 }}>
-          {userData.status?.notif === false ? "⛔ Status blocks notifications" : "✅ Status allows notifications"}
-        </div>
-        {userData.globalMuted && <div style={{ color:"#ef4444", marginTop:4 }}>🔇 Globally muted from chat</div>}
-      </div>
+            {/* Duel record */}
+            {(u.duelsPlayed||0)>0 && (
+              <div style={{ background:"#1a1a2e", borderRadius:10, padding:"10px 12px", marginBottom:8 }}>
+                <div style={{ fontSize:10, color:"#6b7280", marginBottom:6, textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>Duel Record</div>
+                <div style={{ display:"flex", justifyContent:"space-around" }}>
+                  {[["W",u.duelWins||0,"#10b981"],["L",u.duelLosses||0,"#ef4444"],["D",u.duelDraws||0,"#6b7280"]].map(([l,v,col])=>(
+                    <div key={l as string} style={{ textAlign:"center" as const }}>
+                      <div style={{ fontSize:16, fontWeight:900, color:col as string }}>{v as number}</div>
+                      <div style={{ fontSize:10, color:"#4b5563" }}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-      {/* Username changes left */}
-      <div style={{ background:"#0f0f1a", borderRadius:12, padding:"12px 16px", fontSize:13 }}>
-        <div style={{ display:"flex", justifyContent:"space-between" }}>
-          <span style={{ color:"#6b7280" }}>Username changes left</span>
-          <span style={{ fontWeight:700, color: (userData.usernameChangesLeft||0) > 0 ? "#f59e0b" : "#ef4444" }}>
-            {userData.usernameChangesLeft ?? 3}
-          </span>
-        </div>
-        <div style={{ display:"flex", justifyContent:"space-between", marginTop:6 }}>
-          <span style={{ color:"#6b7280" }}>Admin access</span>
-          <span style={{ fontWeight:700, color: userData.isAdmin ? "#f59e0b" : "#6b7280" }}>{userData.isAdmin ? "Yes ⚡" : "No"}</span>
+            {/* Recent logins */}
+            {u.loginHistory && (
+              <div style={{ background:"#1a1a2e", borderRadius:10, padding:"10px 12px" }}>
+                <div style={{ fontSize:10, color:"#6b7280", marginBottom:6, textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>Recent Logins</div>
+                {Object.values(u.loginHistory as any).sort((a:any,b:any)=>b.ts-a.ts).slice(0,4).map((l:any,i:number)=>(
+                  <div key={i} style={{ fontSize:10, color:"#6b7280", padding:"2px 0", borderBottom:"1px solid #1e1e30" }}>
+                    {l.loginAt} · {l.durationMin||0} min
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 // ── SYSTEM PANEL ──────────────────────────────────────────────────────────────
 function SystemPanel() {
