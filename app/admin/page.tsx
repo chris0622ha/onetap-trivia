@@ -613,7 +613,7 @@ function UsersPanel() {
                       {u.username}
                       <BadgeIcon badge={u.badge} size={13} />
                       {u.isAdmin && <span style={{ marginLeft:6, ...tag("245,158,11") }}>admin</span>}
-                      {u.banned && <span style={{ marginLeft:6, ...tag("239,68,68") }}>banned</span>}
+                      {u.banned && (!u.banExpiresAt || Date.now() < u.banExpiresAt) && <span style={{ marginLeft:6, ...tag("239,68,68") }}>banned</span>}
                     </div>
                     <div style={{ fontSize:11, color:"#4b5563", fontFamily:"monospace" }}>{u.uid.slice(0,18)}…</div>
                   </div>
