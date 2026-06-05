@@ -1757,6 +1757,7 @@ export default function Home() {
         // Check ban IMMEDIATELY before anything else — prevents refresh bypass
         try {
           const banSnap = await get(ref(db, `bans/${u.uid}`));
+          const cachedBan = (() => { try { const b = localStorage.getItem("tq_ban"); return b ? JSON.parse(b) : null; } catch { return null; } })();
           if (banSnap.exists()) {
             const ban = banSnap.val();
             const isPermanent = ban.duration === "permanent";
@@ -1764,7 +1765,19 @@ export default function Home() {
             if (isActive) {
               setWarnModal({ ...ban, type: "ban" });
               return; // stop here — no point loading the rest
+            } else {
+              // Ban exists but expired — show expired screen, clean up
+              await remove(ref(db, `bans/${u.uid}`));
+              await update(ref(db, `users/${u.uid}`), { banned: false, banExpiresAt: null });
+              try { localStorage.removeItem("tq_ban"); } catch {}
+              setWarnModal({ type: "unbanned" });
+              return;
             }
+          } else if (cachedBan) {
+            // Cache says banned but Firebase says no ban — was manually removed
+            try { localStorage.removeItem("tq_ban"); } catch {}
+            setWarnModal({ type: "unbanned" });
+            return;
           }
         } catch {}
         const data = await loadUserData(u.uid);
