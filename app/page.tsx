@@ -1449,42 +1449,45 @@ export default function Home() {
           setName(data.username);
           try { localStorage.setItem("onetap_name", data.username); } catch {}
         }
-        // Warn/Ban popup listener + ban expiry checker
+        // Warn/Ban popup listener — fires when admin writes pendingWarn or pendingBanNotif
   useEffect(() => {
     if (!user) return;
     const warnRef = ref(db, `users/${user.uid}/pendingWarn`);
     const banNotifRef = ref(db, `users/${user.uid}/pendingBanNotif`);
     const unsubWarn = onValue(warnRef, snap => {
       if (!snap.exists()) return;
-      setWarnModal({ ...snap.val(), type: "warn" });
+      const data = snap.val();
       remove(warnRef).catch(() => {});
+      setWarnModal({ ...data, type: "warn" });
     });
     const unsubBan = onValue(banNotifRef, snap => {
       if (!snap.exists()) return;
-      setWarnModal({ ...snap.val(), type: "ban" });
+      const data = snap.val();
       remove(banNotifRef).catch(() => {});
+      setWarnModal({ ...data, type: "ban" });
     });
-    // Check if current ban has expired every 15 seconds
-    const banCheckInterval = setInterval(async () => {
-      if (!warnModal || warnModal.type !== "ban") return;
-      if (warnModal.duration === "permanent") return;
-      if (warnModal.expiresAt && Date.now() > warnModal.expiresAt) {
-        // Ban expired — check Firebase to confirm
-        const banSnap = await get(ref(db, `bans/${user.uid}`));
-        if (!banSnap.exists()) {
+    return () => { off(warnRef); off(banNotifRef); };
+  }, [user?.uid]); // only re-sub when user changes
+
+  // Ban expiry checker — separate effect so it doesn't re-subscribe the listener
+  useEffect(() => {
+    if (!warnModal || warnModal.type !== "ban" || warnModal.duration === "permanent") return;
+    const interval = setInterval(async () => {
+      if (!warnModal.expiresAt || Date.now() <= warnModal.expiresAt) return;
+      const banSnap = await get(ref(db, `bans/${user?.uid}`));
+      if (!banSnap.exists()) {
+        setWarnModal({ type: "unbanned" });
+      } else {
+        const ban = banSnap.val();
+        if (ban.expiresAt && Date.now() > ban.expiresAt) {
+          await remove(ref(db, `bans/${user!.uid}`));
+          await update(ref(db, `users/${user!.uid}`), { banned: false, banExpiresAt: null });
           setWarnModal({ type: "unbanned" });
-        } else {
-          const ban = banSnap.val();
-          if (ban.expiresAt && Date.now() > ban.expiresAt) {
-            await remove(ref(db, `bans/${user.uid}`));
-            await update(ref(db, `users/${user.uid}`), { banned: false, banExpiresAt: null });
-            setWarnModal({ type: "unbanned" });
-          }
         }
       }
     }, 15000);
-    return () => { off(warnRef); off(banNotifRef); clearInterval(banCheckInterval); };
-  }, [user?.uid, warnModal?.expiresAt]);
+    return () => clearInterval(interval);
+  }, [warnModal?.type, warnModal?.expiresAt]);
 
   // ── Request notifications on first visit (logged in or not) ─────────────────
   useEffect(() => {
