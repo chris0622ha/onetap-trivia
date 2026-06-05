@@ -1417,6 +1417,7 @@ export default function Home() {
   const [cmdOpen, setCmdOpen] = useState(false);
   const [cmdInput, setCmdInput] = useState("");
   const [globalAudience, setGlobalAudience] = useState<"all"|"crown"|"gold"|"silver"|"bronze">("all");
+  const [expandedCmd, setExpandedCmd] = useState<string|null>(null);
 
   // ── Effects canvas manager
   const effectsRef = React.useRef<{ stop: () => void }[]>([]);
@@ -1460,7 +1461,11 @@ export default function Home() {
     if (cmd === "undo") { cmd = lastCmdRef.current ? "undo_" + lastCmdRef.current : "reset"; }
     else { lastCmdRef.current = cmd; }
 
-    // effects stack — no cleanup, let the chaos accumulate
+    // CSS-only effects (filter/transform) stop each other; canvas effects stack
+    const isCanvasCmd = ["fireworks","confetti","party","snow","matrix","bubbles","lasers","dvd","love","rage","amongus"].includes(cmd);
+    if (!isCanvasCmd) {
+      // Stop canvas effects too when switching to CSS mode... actually keep canvas, just stop CSS
+    }
 
     const root = document.documentElement;
 
@@ -3068,19 +3073,24 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
                 <div style={{ fontSize:10, color:"#10b981", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, padding:"4px 4px 8px" }}>🌐 Global</div>
                 {globalCmds.filter(([cmd,label]) => !cmdInput.trim() || cmd.includes(cmdInput.trim().toLowerCase()) || label.toLowerCase().includes(cmdInput.trim().toLowerCase())).map(([cmd, label]) => (
                   <div key={cmd} style={{ marginBottom:2 }}>
-                    <div style={{ padding:"7px 12px", borderRadius:8, background:"rgba(255,255,255,0.04)", color:"#d1d5db", fontSize:13, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                      <span>{label}</span>
-                      <div style={{ display:"flex", gap:3 }}>
-                        {([ ["🙋","just_me"],["🌐","all"],["👑","crown"],["🥇","gold"],["🥈","silver"],["🥉","bronze"] ] as [string,string][]).map(([icon, aud]) => (
-                          <div key={aud} onClick={async () => { runCommand(cmd); if (aud !== "just_me") await broadcastCmd(cmd, aud as any); }}
-                            style={{ padding:"2px 5px", borderRadius:5, background:"rgba(16,185,129,0.12)", fontSize:12, cursor:"pointer", lineHeight:1.4 }}
+                    <div onClick={() => setExpandedCmd(expandedCmd === cmd ? null : cmd)}
+                      style={{ padding:"7px 12px", borderRadius:8, background: expandedCmd === cmd ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)", color:"#d1d5db", fontSize:13, cursor:"pointer" }}
+                      onMouseEnter={e => { if(expandedCmd !== cmd) e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}
+                      onMouseLeave={e => { if(expandedCmd !== cmd) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}>
+                      {label}
+                    </div>
+                    {expandedCmd === cmd && (
+                      <div style={{ display:"flex", gap:4, padding:"4px 8px 6px", flexWrap:"wrap" as const }}>
+                        {([ ["🙋 Me","just_me"],["🌐 Everyone","all"],["👑 Crown","crown"],["🥇 Gold","gold"],["🥈 Silver","silver"],["🥉 Bronze","bronze"] ] as [string,string][]).map(([lbl, aud]) => (
+                          <div key={aud} onClick={async () => { runCommand(cmd); if (aud !== "just_me") await broadcastCmd(cmd, aud as any); setExpandedCmd(null); }}
+                            style={{ padding:"3px 8px", borderRadius:6, background:"rgba(16,185,129,0.15)", color:"#10b981", fontSize:11, fontWeight:700, cursor:"pointer", border:"1px solid rgba(16,185,129,0.3)" }}
                             onMouseEnter={e => (e.currentTarget.style.background = "rgba(16,185,129,0.35)")}
-                            onMouseLeave={e => (e.currentTarget.style.background = "rgba(16,185,129,0.12)")}>
-                            {icon}
+                            onMouseLeave={e => (e.currentTarget.style.background = "rgba(16,185,129,0.15)")}>
+                            {lbl}
                           </div>
                         ))}
                       </div>
-                    </div>
+                    )}
                   </div>
                 ))}
               </div>
