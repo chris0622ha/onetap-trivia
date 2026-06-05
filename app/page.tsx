@@ -1912,7 +1912,6 @@ export default function Home() {
             <div key={version} style={{ marginBottom:16 }}>
               <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:6 }}>
                 <span style={{ color:"#f59e0b", fontWeight:800, fontSize:14 }}>{version}</span>
-                <span style={{ color:"#4b5563", fontSize:12 }}>{date}</span>
               </div>
               {items.map(item => (
                 <div key={item} style={{ color:"#d1d5db", fontSize:13, lineHeight:1.6, paddingLeft:12, borderLeft:"2px solid #2d2d44", marginBottom:3 }}>{item}</div>
