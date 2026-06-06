@@ -2647,14 +2647,14 @@ export default function Home() {
     <>
       {/* Global Announcement Banner — fixed, centered, all screens */}
       {announcement && (
-        <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:500, background:"rgba(245,158,11,0.15)", borderBottom:"2px solid rgba(245,158,11,0.5)", padding:"10px 20px", backdropFilter:"blur(8px)", boxShadow:"0 2px 20px rgba(0,0,0,0.4)", textAlign:"center" as const, fontSize:16, lineHeight:1.4, pointerEvents:"none" }}>
+        <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:490, background:"rgba(245,158,11,0.15)", borderBottom:"2px solid rgba(245,158,11,0.5)", padding:"10px 20px", backdropFilter:"blur(8px)", boxShadow:"0 2px 20px rgba(0,0,0,0.4)", textAlign:"center" as const, fontSize:16, lineHeight:1.4, pointerEvents:"none" }}>
           <span style={{ color:"#f59e0b", fontWeight:700 }}>{announcement.postedBy || "admin"}: </span>
           <span style={{ color:"#e5e7eb" }}>{announcement.text}</span>
         </div>
       )}
       {/* Language button — top left, fixed */}
       <button onClick={() => setShowLangModal(true)}
-        style={{ position:"fixed", top:12, left:16, zIndex:200, background:"rgba(15,15,26,0.7)", border:"1px solid rgba(45,45,68,0.6)", borderRadius:8, color:"#9ca3af", fontSize:12, fontWeight:600, padding:"5px 12px", cursor:"pointer" }}>
+        style={{ position:"fixed", top: announcement ? 50 : 12, left:16, zIndex:200, transition:"top 0.2s", background:"rgba(15,15,26,0.7)", border:"1px solid rgba(45,45,68,0.6)", borderRadius:8, color:"#9ca3af", fontSize:12, fontWeight:600, padding:"5px 12px", cursor:"pointer" }}>
         🌐 {LANGUAGES.find(l => l.code === currentLang)?.flag || "🌐"}
       </button>
 
@@ -2682,7 +2682,7 @@ export default function Home() {
       )}
 
       {/* Right side — profile + actions, fixed, no scroll */}
-      <div style={{ position:"fixed", top:0, right:0, padding:"12px 16px", zIndex:200, display:"flex", alignItems:"center", gap:10 }}>
+      <div style={{ position:"fixed", top: announcement ? 38 : 0, right:0, padding:"12px 16px", zIndex:200, display:"flex", alignItems:"center", gap:10, transition:"top 0.2s" }}>
         {authLoading ? null : user ? (
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <button onClick={() => setModal("profile")} title="View your profile"
@@ -3062,7 +3062,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
     <div style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"72px 16px 20px", color:"#fff" }}>
       <AuthHeader />
       {userData?.isAdmin && (
-        <div style={{ position:"fixed", top:48, left:"50%", transform:"translateX(-50%)", zIndex:1000, display:"flex", gap:6 }}>
+        <div style={{ position:"fixed", top: announcement ? 86 : 48, left:"50%", transform:"translateX(-50%)", zIndex:1000, display:"flex", gap:6, transition:"top 0.2s" }}>
           <div onClick={() => setAnnounceModal(true)}
             style={{ background:"#f59e0b", color:"#000", fontSize:11, fontWeight:700, padding:"5px 12px", borderRadius:20, cursor:"pointer", whiteSpace:"nowrap" as const, boxShadow:"0 2px 8px rgba(0,0,0,0.4)" }}>
             📢 Announcement
