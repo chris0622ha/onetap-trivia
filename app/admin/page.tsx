@@ -1675,6 +1675,7 @@ function SystemPanel() {
       {/* Database Stats */}
       <div style={c.card}>
         <div style={c.h2}>🗄️ Database Stats</div>
+        {loading ? <div style={{color:"#6b7280",padding:"20px 0",textAlign:"center" as const}}>Loading…</div> : <>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10,marginBottom:16}}>
           {[
             ["Users",stats.users,"#e5e7eb"],
@@ -1700,6 +1701,7 @@ function SystemPanel() {
             <span style={{color:"#f59e0b",fontWeight:700}}>{count as number} questions</span>
           </div>
         ))}
+        </>}
       </div>
 
       {/* Manual Badge Cron */}
