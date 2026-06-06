@@ -2193,17 +2193,17 @@ export default function Home() {
         remove(ref(db, `users/${u.uid}/pendingBanNotif`)).catch(() => {});
       });
 
-      // Listen to active global effects — only NEW ones (after this page loaded)
-      const pageLoadTime = Date.now();
+      // Listen to active global effects — run if timer still has time left
+      let activeEffectsInitDone = false;
       onValue(ref(db, "config/activeEffects"), (snap) => {
         if (!snap.exists()) return;
         const effects = snap.val() as Record<string, {cmd:string;durationSec:number;startedAt:number}>;
         Object.values(effects).forEach(({ cmd, durationSec, startedAt }) => {
-          if (startedAt < pageLoadTime) return; // ignore old effects
           const elapsed = (Date.now() - startedAt) / 1000;
           const remaining = Math.floor(durationSec - elapsed);
-          if (remaining > 2) runCommand(cmd, remaining);
+          if (remaining > 2) runCommand(cmd, remaining); // still has time — run it
         });
+        activeEffectsInitDone = true;
       });
 
       // pendingCmd — run a command sent by admin
