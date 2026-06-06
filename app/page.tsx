@@ -2860,13 +2860,6 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
     </div>
   );
 
-  const personalCmds: [string,string][] = [
-    ["profile","👤 profile"],["signout","🚪 sign out"],["admin","⚙️ admin"],
-    ["notif","🔔 push notif"],["maintenance","🔧 maintenance"],
-    ["ban","🔨 ban user"],["warn","⚠️ warn user"],["unban","✅ unban user"],
-    ["users","👥 users"],["bans","🔨 bans"],["warns","⚠️ warns"],
-    ["analytics","📈 analytics"],["logs","📋 logs"],["system","⚙️ system"],
-  ];
   const globalCmds: [string,string][] = [
     ["fireworks","🎆 fireworks"],["confetti","🎉 confetti"],["party","🎊 party"],["snow","❄️ snow"],["matrix","💊 matrix"],
     ["bubbles","🫧 bubbles"],["lasers","⚡ lasers"],["dvd","📀 dvd"],["love","❤️ love"],["rage","😡 rage"],["amongus","🧑‍🚀 among us"],
@@ -3217,18 +3210,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
               onKeyDown={e => { if (e.key === "Escape") { setCmdOpen(false); setCmdInput(""); } }}
               placeholder="type a command..."
               style={{ width:"100%", background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:8, color:"#fff", fontSize:14, padding:"10px 12px", outline:"none", boxSizing:"border-box" as const, marginBottom:12, flexShrink:0 }} />
-            <div style={{ overflowY:"auto" as const, flex:1, display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(170px, 1fr))", gap:8 }}>
-              <div>
-                <div style={{ fontSize:10, color:"#f59e0b", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, padding:"4px 4px 8px" }}>🙋 Personal Only</div>
-                {personalCmds.filter(([cmd,label]) => !cmdInput.trim() || cmd.includes(cmdInput.trim().toLowerCase()) || label.toLowerCase().includes(cmdInput.trim().toLowerCase())).map(([cmd, label]) => (
-                  <div key={cmd} onClick={() => { runCommand(cmd); setCmdInput(""); }}
-                    style={{ padding:"7px 12px", borderRadius:8, background:"rgba(255,255,255,0.04)", color:"#d1d5db", fontSize:13, cursor:"pointer", marginBottom:2 }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(245,158,11,0.18)")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}>
-                    {label}
-                  </div>
-                ))}
-              </div>
+            <div style={{ overflowY:"auto" as const, flex:1 }}>
               <div>
                 <div style={{ fontSize:10, color:"#10b981", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, padding:"4px 4px 8px" }}>🌐 Global</div>
                 {globalCmds.filter(([cmd,label]) => !cmdInput.trim() || cmd.includes(cmdInput.trim().toLowerCase()) || label.toLowerCase().includes(cmdInput.trim().toLowerCase())).map(([cmd, label]) => (
