@@ -2645,6 +2645,13 @@ export default function Home() {
   // ── AUTH HEADER ──────────────────────────────────────────────────────────────
   const AuthHeader = () => (
     <>
+      {/* Global Announcement Banner — fixed, centered, all screens */}
+      {announcement && (
+        <div style={{ position:"fixed", bottom:16, left:"50%", transform:"translateX(-50%)", zIndex:500, maxWidth:"min(600px, 90vw)", width:"max-content", background:"rgba(15,15,26,0.92)", border:"1px solid rgba(245,158,11,0.5)", borderRadius:20, padding:"7px 18px", backdropFilter:"blur(8px)", boxShadow:"0 4px 20px rgba(0,0,0,0.4)", textAlign:"center" as const, fontSize:14, lineHeight:1.4, pointerEvents:"none" }}>
+          <span style={{ color:"#f59e0b", fontWeight:700 }}>{announcement.postedBy || "admin"}: </span>
+          <span style={{ color:"#e5e7eb" }}>{announcement.text}</span>
+        </div>
+      )}
       {/* Language button — top left, fixed */}
       <button onClick={() => setShowLangModal(true)}
         style={{ position:"fixed", top:12, left:16, zIndex:200, background:"rgba(15,15,26,0.7)", border:"1px solid rgba(45,45,68,0.6)", borderRadius:8, color:"#9ca3af", fontSize:12, fontWeight:600, padding:"5px 12px", cursor:"pointer" }}>
@@ -3068,12 +3075,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
           )}
         </div>
       )}
-      {announcement && (
-        <div style={{ width:"100%", maxWidth: isMobile ? 460 : 860, marginBottom:16 }}>
-          <span style={{ color:"#f59e0b", fontWeight:700 }}>{announcement.postedBy || "admin"}: </span>
-          <span style={{ color:"#e5e7eb" }}>{announcement.text}</span>
-        </div>
-      )}
+
 
       {duelChallenges.length > 0 && (
         <div style={{ width:"100%", maxWidth: isMobile ? 460 : 860, marginBottom:16, display:"flex", flexDirection:"column", gap:8 }}>
