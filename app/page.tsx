@@ -3399,10 +3399,10 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
               {announceIsTemp && (
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                   <input type="number" min={1} value={announceTempMin ?? 10}
-                    onChange={e => setAnnounceTempMin(Math.max(1, parseInt(e.target.value)||10))}
+                    onChange={e => setAnnounceTempMin(Math.max(1, parseInt(e.target.value)||30))}
                     onFocus={e => e.currentTarget.select()}
                     style={{ width:60, background:"#0f0f1a", border:"1px solid #2d2d44", borderRadius:6, color:"#fff", fontSize:13, padding:"4px 8px", textAlign:"center" as const }} />
-                  <span style={{ color:"#6b7280", fontSize:13 }}>min</span>
+                  <span style={{ color:"#6b7280", fontSize:13 }}>sec</span>
                 </div>
               )}
             </div>
@@ -3412,11 +3412,11 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
                   const val = { text: announceText.trim(), postedAt: new Date().toLocaleString("en-US", { timeZone:"America/New_York", month:"numeric", day:"numeric", hour:"numeric", minute:"2-digit", hour12:true }) + " ET" };
                   await set(ref(db, "config/announcement"), val);
                   setAnnouncement(val);
-                  if (announceIsTemp && announceTempMin) setTimeout(async () => { await remove(ref(db, "config/announcement")); setAnnouncement(null); }, announceTempMin * 60000);
+                  if (announceIsTemp && announceTempMin) setTimeout(async () => { await remove(ref(db, "config/announcement")); setAnnouncement(null); }, announceTempMin * 1000);
                   setAnnounceModal(false); setAnnounceText("");
                 }}
                 style={{ flex:1, padding:"10px", borderRadius:8, background:"#f59e0b", color:"#000", fontWeight:700, fontSize:14, cursor:"pointer", textAlign:"center" as const }}>
-                📢 Post{announceIsTemp ? ` (${announceTempMin ?? 10}min)` : " (Permanent)"}
+                📢 Post{announceIsTemp ? ` (${announceTempMin ?? 30}sec)` : " (Permanent)"}
               </div>
               <div onClick={() => setAnnounceModal(false)}
                 style={{ padding:"10px 16px", borderRadius:8, background:"rgba(255,255,255,0.06)", color:"#9ca3af", fontSize:14, cursor:"pointer" }}>
