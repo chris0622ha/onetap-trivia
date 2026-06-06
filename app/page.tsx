@@ -1756,19 +1756,6 @@ export default function Home() {
       autoStop((durationSec??10)*1000); return;
     }
 
-    // ── AMONG US ─────────────────────────────────────────────────────
-    ctx2.fillStyle=color;ctx2.beginPath();ctx2.ellipse(20,30,18,22,0,0,Math.PI*2);ctx2.fill();
-        ctx2.beginPath();ctx2.ellipse(20,12,14,12,0,0,Math.PI*2);ctx2.fill();
-        ctx2.fillStyle="rgba(150,220,255,0.8)";ctx2.beginPath();ctx2.ellipse(20,12,10,7,0,0,Math.PI*2);ctx2.fill();
-        ctx2.fillStyle=color;ctx2.fillRect(6,44,10,12);ctx2.fillRect(24,44,10,12);
-        ctx2.restore();};
-      const tick=()=>{if(stopped2)return;ctx2.clearRect(0,0,c.width,c.height);
-        crew.forEach(cr=>{cr.x+=cr.speed;if(cr.x>c.width+60)cr.x=-60;if(cr.x<-60)cr.x=c.width+60;drawCrewmate(cr.x,cr.y,cr.color,cr.speed<0);});
-        raf2=requestAnimationFrame(tick);};
-      tick();
-      effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();}});
-      autoStop((durationSec??12)*1000); return;
-    }
 
     // ── PARTY ─────────────────────────────────────────────────────────
     if (cmd === "party") {
