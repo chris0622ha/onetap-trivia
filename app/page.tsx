@@ -1470,9 +1470,21 @@ export default function Home() {
 
   function runCommand(cmd: string, durationSec?: number) {
     if (cmd === "undo") {
-      // Pop and stop only the most recent canvas effect
+      // Pop and stop only the most recent effect
       const last = effectsRef.current.pop();
-      if (last) { last.stop(); return; }
+      if (last) {
+        last.stop();
+        // Remove most recent activeEffect from Firebase
+        get(ref(db, "config/activeEffects")).then(snap => {
+          if (!snap.exists()) return;
+          const entries = Object.entries(snap.val() as Record<string,any>);
+          if (entries.length > 0) {
+            const lastKey = entries[entries.length - 1][0];
+            remove(ref(db, `config/activeEffects/${lastKey}`)).catch(()=>{});
+          }
+        }).catch(()=>{});
+        return;
+      }
       // No canvas effect — undo the last CSS command
       cmd = lastCmdRef.current ? "undo_" + lastCmdRef.current : "reset";
     } else { lastCmdRef.current = cmd; }
@@ -2181,7 +2193,7 @@ export default function Home() {
         remove(ref(db, `users/${u.uid}/pendingBanNotif`)).catch(() => {});
       });
 
-      // Listen to active global effects — only for effects started AFTER page load
+      // Listen to active global effects — only NEW ones (after this page loaded)
       const pageLoadTime = Date.now();
       onValue(ref(db, "config/activeEffects"), (snap) => {
         if (!snap.exists()) return;
