@@ -1947,12 +1947,45 @@ export default function Home() {
     }
     if (cmd === "amongus") {
       const c=makeCanvas(); const ctx2=c.getContext("2d")!;
-      const colors3=["#ef4444","#3b82f6","#10b981","#f59e0b","#8b5cf6","#ec4899","#06b6d4","#fff"];
-      type Crew={x:number;y:number;color:string;speed:number};
-      const crew:Crew[]=Array.from({length:6},()=>({x:Math.random()*c.width,y:Math.random()*c.height*0.8+c.height*0.1,color:colors3[Math.floor(Math.random()*colors3.length)],speed:(Math.random()*2+1)*(Math.random()>0.5?1:-1)}));
-      const drawCrew=(x:number,y:number,color:string,flip:boolean)=>{ctx2.save();if(flip){ctx2.translate(x+20,y);ctx2.scale(-1,1);ctx2.translate(-20,0);}else{ctx2.translate(x,y);}ctx2.fillStyle=color;ctx2.beginPath();ctx2.ellipse(20,30,18,22,0,0,Math.PI*2);ctx2.fill();ctx2.beginPath();ctx2.ellipse(20,12,14,12,0,0,Math.PI*2);ctx2.fill();ctx2.fillStyle="rgba(150,220,255,0.8)";ctx2.beginPath();ctx2.ellipse(20,12,10,7,0,0,Math.PI*2);ctx2.fill();ctx2.fillStyle=color;ctx2.fillRect(6,44,10,12);ctx2.fillRect(24,44,10,12);ctx2.restore();};
+      // Distinctly colored original "space bean" characters — not crewmates
+      const palette=["#ef4444","#3b82f6","#10b981","#f59e0b","#8b5cf6","#ec4899","#06b6d4","#f97316","#84cc16","#fff"];
+      type Bean={x:number;y:number;color:string;speed:number;wobble:number;wt:number};
+      const beans:Bean[]=Array.from({length:8},(_,i)=>({
+        x:Math.random()*c.width, y:Math.random()*c.height*0.7+c.height*0.1,
+        color:palette[i % palette.length],
+        speed:(Math.random()*2.5+1)*(Math.random()>0.5?1:-1),
+        wobble:Math.random()*Math.PI*2, wt:Math.random()*0.05+0.03
+      }));
+      const drawBean=(x:number,y:number,col:string,flip:boolean,wob:number)=>{
+        ctx2.save();
+        ctx2.translate(x+20,y+40);
+        if(flip) ctx2.scale(-1,1);
+        // Shadow
+        ctx2.fillStyle="rgba(0,0,0,0.2)";
+        ctx2.beginPath();ctx2.ellipse(0,28,16,5,0,0,Math.PI*2);ctx2.fill();
+        // Body — rounded bean shape
+        ctx2.fillStyle=col;
+        ctx2.beginPath();
+        ctx2.ellipse(0,10,15,20,0,0,Math.PI*2);ctx2.fill();
+        // Head bump
+        ctx2.beginPath();ctx2.ellipse(2,-12,12,13,0,0,Math.PI*2);ctx2.fill();
+        // Backpack
+        ctx2.fillStyle=`hsl(${parseInt(col.slice(1),16)%360},50%,30%)`;
+        ctx2.beginPath();ctx2.roundRect(8,0,8,14,3);ctx2.fill();
+        // Visor — distinctive wide wrap-around
+        ctx2.fillStyle="rgba(120,220,255,0.9)";
+        ctx2.beginPath();ctx2.ellipse(3,-12,9,6,0.2,0,Math.PI*2);ctx2.fill();
+        // Visor shine
+        ctx2.fillStyle="rgba(255,255,255,0.6)";
+        ctx2.beginPath();ctx2.ellipse(0,-14,4,2,0.3,0,Math.PI*2);ctx2.fill();
+        // Legs wobble
+        ctx2.fillStyle=col;
+        ctx2.beginPath();ctx2.roundRect(-10+Math.sin(wob)*3,24,8,10,3);ctx2.fill();
+        ctx2.beginPath();ctx2.roundRect(2+Math.sin(wob+Math.PI)*3,24,8,10,3);ctx2.fill();
+        ctx2.restore();
+      };
       let raf2:number;let stopped2=false;
-      const tick=()=>{if(stopped2)return;ctx2.clearRect(0,0,c.width,c.height);crew.forEach(cr=>{cr.x+=cr.speed;if(cr.x>c.width+60)cr.x=-60;if(cr.x<-60)cr.x=c.width+60;drawCrew(cr.x,cr.y,cr.color,cr.speed<0);});raf2=requestAnimationFrame(tick);};
+      const tick=()=>{if(stopped2)return;ctx2.clearRect(0,0,c.width,c.height);beans.forEach(b=>{b.x+=b.speed;b.wt+=0.08;b.wobble+=b.wt;if(b.x>c.width+80)b.x=-80;if(b.x<-80)b.x=c.width+80;drawBean(b.x,b.y,b.color,b.speed<0,b.wobble);});raf2=requestAnimationFrame(tick);};
       tick();effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();}});autoStop((durationSec??12)*1000); return;
     }
     if (cmd === "party") {
