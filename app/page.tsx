@@ -1546,7 +1546,6 @@ export default function Home() {
 
     // ── UTILITY ──────────────────────────────────────────────────────
     if (cmd === "admin") { window.location.href = "/admin"; return; }
-    if (cmd === "rickroll") { window.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ","_blank"); return; }
     if (cmd === "signout") { window.dispatchEvent(new CustomEvent("onetap-signout")); return; }
     if (cmd === "profile") { window.dispatchEvent(new CustomEvent("onetap-modal", { detail: "profile" })); return; }
     // Admin panel nav shortcuts
@@ -2982,7 +2981,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
     ["shake","💥 shake"],["spin","🌀 spin"],["zoom","🔍 zoom"],["flip","🙃 flip"],["mirror","🪞 mirror"],["pixelate","🟫 pixelate"],["drunk","🥴 drunk"],
     ["comic","🎭 comic sans"],["tiny","🔬 tiny"],["huge","🔭 huge"],["zalgo","👾 zalgo"],["reverse","↩️ reverse text"],
     ["hack","💻 hack"],["sudo","⌨️ sudo"],["404","🚫 404"],
-    ["friday","📅 friday"],["midnight","🌙 midnight"],["newyear","🎆 new year"],["rickroll","🎵 rickroll"],
+    ["friday","📅 friday"],["midnight","🌙 midnight"],["newyear","🎆 new year"],
     ["announce","📢 announce"],["undo","↩️ undo"],["reset","🔄 reset"],
     ["earthquake","🌍 earthquake"],["blackout","⬛ blackout"],["strobe","⚡ strobe"],["upsidedown","🙃 upside down"],["oldtv","📺 old tv"],["windows","🪟 windows xp"],["bsod","💙 bsod"],["loading","⏳ loading"],
   ];
