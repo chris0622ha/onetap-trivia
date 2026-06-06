@@ -3026,7 +3026,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
   // ── HOME ──────────────────────────────────────────────────────────────────────
   // Maintenance mode — block non-admins
   if (maintenanceMode && !userData?.isAdmin) return (
-    <div style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"72px 20px 20px", color:"#fff", textAlign:"center" }}>
+    <div style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:`${announcement ? 112 : 72}px 20px 20px`, color:"#fff", textAlign:"center" }}>
       <AuthHeader />
       <div style={{ fontSize:56, marginBottom:16 }}>🔧</div>
       <h1 style={{ fontSize:"2rem", fontWeight:900, margin:"0 0 12px" }}>Down for Maintenance</h1>
@@ -3050,7 +3050,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
   ];
 
   if (screen === "home") return (
-    <div style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"72px 16px 20px", color:"#fff" }}>
+    <div style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:`${announcement ? 112 : 72}px 16px 20px`, color:"#fff" }}>
       <AuthHeader />
       {userData?.isAdmin && (
         <div style={{ position:"fixed", top: announcement ? 86 : 48, left:"50%", transform:"translateX(-50%)", zIndex:1000, display:"flex", gap:6, transition:"top 0.2s" }}>
@@ -3509,7 +3509,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
     const emoji = r.correct >= Math.round(r.total * 0.85) ? "🏆" : r.correct >= Math.round(r.total * 0.6) ? "🔥" : r.correct >= Math.round(r.total * 0.35) ? "👍" : "💀";
     const msg = r.correct >= Math.round(r.total * 0.85) ? "Legendary!" : r.correct >= Math.round(r.total * 0.6) ? "On Fire!" : r.correct >= Math.round(r.total * 0.35) ? "Not Bad!" : "Keep Practicing!";
     return (
-      <div style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"72px 16px 20px", color:"#fff" }}>
+      <div style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:`${announcement ? 112 : 72}px 16px 20px`, color:"#fff" }}>
         <AuthHeader />
         {modal === "profile" && user && <ProfileModal user={user} userData={userData} onClose={() => setModal(null)} onUserDataChange={(d) => { setUserData(d); setName(d.username); }} />}
           <div style={{ textAlign:"center", marginBottom:28 }}>
@@ -3538,7 +3538,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
   // ── GAME ──────────────────────────────────────────────────────────────────────
   if (!q) return null;
   return (
-    <div style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", padding:"72px 16px 20px", color:"#fff" }}>
+    <div style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", padding:`${announcement ? 112 : 72}px 16px 20px`, color:"#fff" }}>
       <AuthHeader />
       {modal === "profile" && user && <ProfileModal user={user} userData={userData} onClose={() => setModal(null)} onUserDataChange={(d) => { setUserData(d); setName(d.username); }} />}
       <div style={{ width:"100%", maxWidth:480, display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
