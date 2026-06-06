@@ -3069,12 +3069,9 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
         </div>
       )}
       {announcement && (
-        <div style={{ width:"100%", maxWidth: isMobile ? 460 : 860, background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.3)", borderRadius:12, padding:"12px 16px", marginBottom:16, display:"flex", alignItems:"flex-start", gap:10 }}>
-          <span style={{ fontSize:18, flexShrink:0 }}>📢</span>
-          <div>
-            <div style={{ color:"#f59e0b", fontWeight:700, fontSize:14 }}>{announcement.text}</div>
-            <div style={{ color:"#4b5563", fontSize:11, marginTop:2 }}>{announcement.postedAt}</div>
-          </div>
+        <div style={{ width:"100%", maxWidth: isMobile ? 460 : 860, marginBottom:16 }}>
+          <span style={{ color:"#f59e0b", fontWeight:700 }}>{announcement.postedBy || "admin"}: </span>
+          <span style={{ color:"#e5e7eb" }}>{announcement.text}</span>
         </div>
       )}
 
@@ -3413,7 +3410,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
             <div style={{ display:"flex", gap:8 }}>
               <div onClick={async () => {
                   if (!announceText.trim()) return;
-                  const val = { text: announceText.trim(), postedAt: new Date().toLocaleString("en-US", { timeZone:"America/New_York", month:"numeric", day:"numeric", hour:"numeric", minute:"2-digit", hour12:true }) + " ET" };
+                  const val = { text: announceText.trim(), postedBy: userData?.username || "admin", postedAt: new Date().toLocaleString("en-US", { timeZone:"America/New_York", month:"numeric", day:"numeric", hour:"numeric", minute:"2-digit", hour12:true }) + " ET" };
                   await set(ref(db, "config/announcement"), val);
                   setAnnouncement(val);
                   if (announceIsTemp && announceTempMin) setTimeout(async () => { await remove(ref(db, "config/announcement")); setAnnouncement(null); }, announceTempMin * 1000);
