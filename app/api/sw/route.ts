@@ -18,16 +18,19 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Handle background messages — data-only payload, we show the notification ourselves
+// Handle background messages — data-only payload, we show exactly one notification.
+// Returning a promise from onBackgroundMessage suppresses FCM's own auto-notification.
 messaging.onBackgroundMessage((payload) => {
   const { title, body, url } = payload.data || {};
   if (!title) return;
-  self.registration.showNotification(title, {
+  return self.registration.showNotification(title, {
     body: body || "",
     icon: "/favicon.ico",
     badge: "/favicon.ico",
     vibrate: [100, 50, 100],
     data: { url: url || "/" },
+    tag: "trivquic-notif",
+    renotify: true,
   });
 });
 

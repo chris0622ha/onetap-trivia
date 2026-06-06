@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
     const accessToken = await getAccessToken();
     const finalBody = sender ? `${body} -${sender}` : body;
 
-    // Send as data-only — SW's onBackgroundMessage shows exactly one notification.
-    // webpush.notification caused a duplicate ("New notification from TrivQuic" + actual).
+    // Pure data-only — no webpush block at all, prevents browser auto-notification.
+    // SW's onBackgroundMessage handles showing exactly one notification.
     const res = await fetch(FCM_URL, {
       method:"POST",
       headers:{"Content-Type":"application/json", Authorization:`Bearer ${accessToken}`},
@@ -56,10 +56,6 @@ export async function POST(req: NextRequest) {
             title,
             body: finalBody,
             url: url || "/",
-          },
-          webpush: {
-            headers: { TTL: "86400" },
-            fcm_options: { link: url || "/" },
           },
         },
       }),
