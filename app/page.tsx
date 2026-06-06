@@ -2647,7 +2647,7 @@ export default function Home() {
     <>
       {/* Global Announcement Banner — fixed, centered, all screens */}
       {announcement && (
-        <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:490, background:"rgba(245,158,11,0.15)", borderBottom:"2px solid rgba(245,158,11,0.5)", padding:"10px 20px", backdropFilter:"blur(8px)", boxShadow:"0 2px 20px rgba(0,0,0,0.4)", textAlign:"center" as const, fontSize:16, lineHeight:1.4, pointerEvents:"none" }}>
+        <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:490, background:"rgba(245,158,11,0.15)", borderBottom:"2px solid rgba(245,158,11,0.5)", padding:"10px 20px", backdropFilter:"blur(8px)", boxShadow:"0 2px 20px rgba(0,0,0,0.4)", textAlign:"center" as const, fontSize:16, lineHeight:1.5, pointerEvents:"none", whiteSpace:"normal" as const, wordBreak:"break-word" as const }}>
           <span style={{ color:"#f59e0b", fontWeight:700 }}>{announcement.postedBy || "admin"}: </span>
           <span style={{ color:"#e5e7eb" }}>{announcement.text}</span>
         </div>
