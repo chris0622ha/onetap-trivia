@@ -24,18 +24,15 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   const { title, body, url } = payload.data || {};
   if (!title) return;
-  // Check if a notification with this tag already exists (webpush already showed it)
-  return self.registration.getNotifications({ tag: "trivquic-notif" }).then((existing) => {
-    if (existing.length > 0) return; // already shown by webpush, don't duplicate
-    return self.registration.showNotification(title, {
-      body: body || "",
-      icon: "/favicon.ico",
-      badge: "/favicon.ico",
-      vibrate: [100, 50, 100],
-      data: { url: url || "/" },
-      tag: "trivquic-notif",
-      renotify: true,
-    });
+  // SW is sole handler — show notification directly, no duplicate risk
+  return self.registration.showNotification(title, {
+    body: body || "",
+    icon: "/favicon.ico",
+    badge: "/favicon.ico",
+    vibrate: [100, 50, 100],
+    data: { url: url || "/" },
+    tag: "trivquic-notif",
+    renotify: true,
   });
 });
 

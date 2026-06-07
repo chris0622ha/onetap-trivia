@@ -52,33 +52,24 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         message: {
           token,
-          notification: {
-            title,
-            body: finalBody,
-          },
+          // No top-level notification block — SW handles display to avoid duplicates
           data: {
             title,
             body: finalBody,
             url: url || "/",
           },
           webpush: {
-            headers: { TTL: "86400" },
-            notification: {
-              title,
-              body: finalBody,
-              icon: "/favicon.ico",
-              badge: "/favicon.ico",
-              tag: "trivquic-notif",
-              renotify: true,
-              data: { url: url || "/" },
-            },
+            headers: { TTL: "86400", Urgency: "high" },
+            // No webpush.notification — prevents browser auto-displaying
             fcm_options: { link: url || "/" },
           },
           apns: {
+            headers: { "apns-priority": "10" },
             payload: {
               aps: {
                 alert: { title, body: finalBody },
                 sound: "default",
+                "mutable-content": 1,
               },
             },
           },
