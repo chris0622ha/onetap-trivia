@@ -2611,7 +2611,7 @@ export default function Home() {
           </div>
         </>)}
         {type === "updates" && (<>
-          [
+          {[
             { version:"v2.0.0 — Sunday, June 7, 2026", date:"Sunday, June 7, 2026", items:[
               "🎮 Admin: Sessions panel — see who's playing in real time",
               "📣 Admin: Broadcast panel — popup message to all online users",
