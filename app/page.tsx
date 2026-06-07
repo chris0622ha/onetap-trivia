@@ -1495,7 +1495,7 @@ export default function Home() {
       // Stop canvas effects too when switching to CSS mode... actually keep canvas, just stop CSS
     }
 
-    const root = (document.querySelector(".trivquic-fx") || document.getElementById("__next") || document.documentElement) as HTMLElement;
+    const root = (document.querySelector(".trivquic-fx") as HTMLElement) || document.getElementById("__next") as HTMLElement || document.documentElement;
 
     // ── RESET / UNDO helpers ──────────────────────────────────────────
     if (cmd === "reset" || cmd.startsWith("undo_")) {
@@ -1577,7 +1577,7 @@ export default function Home() {
     }
     if (cmd === "wave") {
       const style=Object.assign(document.createElement("style"),{id:"__wave_style"});
-      style.textContent=`@keyframes __wave{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}} body *{animation:__wave 0.6s ease-in-out infinite!important;}`;
+      style.textContent=`@keyframes __wave{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}} .trivquic-fx *{animation:__wave 0.6s ease-in-out infinite!important;}`;
       document.head.appendChild(style);
       effectsRef.current.push({stop:()=>style.remove()});autoStop((durationSec??10)*1000);return;
     }
@@ -1715,17 +1715,17 @@ export default function Home() {
     if (cmd === "mirror") { root.style.transform="scaleX(-1)"; effectsRef.current.push({stop:()=>{root.style.transform="";}}); autoStop((durationSec??10)*1000); return; }
     if (cmd === "comic") {
       const s = Object.assign(document.createElement("style"),{id:"__comic_style"});
-      s.textContent = `* { font-family: "Comic Sans MS", "Chalkboard SE", cursive !important; }`;
+      s.textContent = `.trivquic-fx * { font-family: "Comic Sans MS", "Chalkboard SE", cursive !important; }`;
       document.head.appendChild(s); effectsRef.current.push({stop:()=>s.remove()}); autoStop((durationSec??10)*1000); return;
     }
     if (cmd === "tiny") {
       const s = Object.assign(document.createElement("style"),{id:"__tiny_style"});
-      s.textContent = `* { font-size: 8px !important; }`;
+      s.textContent = `.trivquic-fx * { font-size: 8px !important; }`;
       document.head.appendChild(s); effectsRef.current.push({stop:()=>s.remove()}); autoStop((durationSec??10)*1000); return;
     }
     if (cmd === "huge") {
       const s = Object.assign(document.createElement("style"),{id:"__huge_style"});
-      s.textContent = `* { font-size: 32px !important; }`;
+      s.textContent = `.trivquic-fx * { font-size: 32px !important; }`;
       document.head.appendChild(s); effectsRef.current.push({stop:()=>s.remove()}); autoStop((durationSec??10)*1000); return;
     }
 
