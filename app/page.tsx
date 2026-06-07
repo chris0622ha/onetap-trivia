@@ -2612,7 +2612,16 @@ export default function Home() {
         </>)}
         {type === "updates" && (<>
           {[
-            { version:"v1.85 — Saturday, June 6, 2026", date:"Saturday, June 6, 2026", items:[
+            { version:"v1.86.0 — Sunday, June 7, 2026", date:"Sunday, June 7, 2026", items:[
+  "🎮 Admin: Sessions panel — see who's currently playing solo or multiplayer in real time",
+  "📣 Admin: Broadcast panel — send a popup message to all online users instantly",
+  "📝 Admin: User Notes panel — add private notes to any user's profile",
+  "❓ Admin: Question Editor — add custom questions per category stored in Firebase",
+  "👤 Cmd palette: target one specific person by username for any global command",
+  "🐛 Fixed: commands no longer re-run when another command fires",
+  "🐛 Fixed: autoStop captures correct effect — no more wrong effects being stopped",
+], },
+{ version:"v1.85.0 — Friday, June 6, 2026", date:"Friday, June 6, 2026", items:[
   "⚡ Secret command palette (admin only) — press ` or Ctrl+K to open",
   "🎆 30+ commands: fireworks, confetti, party, snow, matrix, bubbles, lasers, dvd, love, rage, rainbow, invert, neon, vhs, glitch, shake, spin, zoom, flip, mirror, pixelate, drunk, comic sans, tiny, huge, zalgo, reverse, hack, sudo, 404, friday, midnight, new year, rickroll + more",
   "📡 Global broadcast — run any effect on Everyone, or by badge (Crown/Gold/Silver/Bronze)",
