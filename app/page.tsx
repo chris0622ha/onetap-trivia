@@ -2627,16 +2627,13 @@ export default function Home() {
         </>)}
         {type === "updates" && (<>
           {[
-            { version:"v2.0.0 — Sunday, June 7, 2026", date:"Sunday, June 7, 2026", items:[
-              "🎮 Admin: Sessions panel — see who's playing in real time",
-              "📣 Admin: Broadcast panel — popup message to all online users",
-              "📝 Admin: User Notes panel — private notes per user",
-              "❓ Admin: Question Editor — add custom questions per category",
-              "👤 Cmd palette: target one specific person by username",
-              "🐛 Fixed: commands no longer re-run when another command fires",
-              "🐛 Fixed: autoStop now stops the correct effect",
+            { version:"v0.9.0 — Sunday, June 7, 2026", date:"Sunday, June 7, 2026", items:[
+              "⚡ Command palette (admin only) — 50+ effects, broadcast to everyone or individuals",
+              "📢 Announcement system — real-time messages visible on all screens",
+              "🎯 Effects now respect duration input and stack properly",
+              "🐛 Various bug fixes and mobile improvements",
             ] },
-                    ].map(({ version, date, items }) => (
+          ].map(({ version, date, items }) => (
             <div key={version} style={{ marginBottom:16 }}>
               <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:6 }}>
                 <span style={{ color:"#f59e0b", fontWeight:800, fontSize:14 }}>{version}</span>
@@ -2646,6 +2643,29 @@ export default function Home() {
               ))}
             </div>
           ))}
+          {userData?.isAdmin && (<>
+            <div style={{ borderTop:"1px solid #2d2d44", marginTop:4, paddingTop:12 }}>
+              <div style={{ fontSize:11, color:"#f59e0b", fontWeight:700, letterSpacing:"0.1em", marginBottom:10 }}>👑 ADMIN UPDATES</div>
+              {[
+                { version:"v0.9.0 — Sunday, June 7, 2026", items:[
+                  "🎮 Sessions panel — see who's playing in real time",
+                  "📣 Broadcast panel — popup messages to all online users",
+                  "📝 User Notes panel — private notes per user",
+                  "❓ Question Editor — add custom questions per category",
+                  "👤 Target one specific user in cmd palette",
+                  "🐛 Fixed: effects no longer re-run when another command fires",
+                  "🐛 Fixed: Stop/Undo properly clear Firebase",
+                ] },
+              ].map(({ version, items }) => (
+                <div key={version} style={{ marginBottom:16 }}>
+                  <div style={{ color:"#f59e0b", fontWeight:800, fontSize:14, marginBottom:6 }}>{version}</div>
+                  {items.map(item => (
+                    <div key={item} style={{ color:"#d1d5db", fontSize:13, lineHeight:1.6, paddingLeft:12, borderLeft:"2px solid rgba(245,158,11,0.3)", marginBottom:3 }}>{item}</div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </>)}
         </>)}
         </div>
       </div>
