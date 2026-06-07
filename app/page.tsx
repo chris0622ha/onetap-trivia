@@ -1793,23 +1793,31 @@ export default function Home() {
 
     // ── PIXELATE ──────────────────────────────────────────────────────
     if (cmd === "pixelate") {
+      // Canvas overlay that draws a semi-transparent pixel grid — works everywhere
       const level = parseInt(root.dataset.pixelLevel || "0") + 1;
       root.dataset.pixelLevel = String(level);
-      const factor = Math.max(0.05, 1 / (level * 3)); // 33%, 16%, 11%...
-      const pct = Math.round(factor * 100);
-      const invPct = Math.round(100 / factor);
-      // Inject a style that scales the page down then back up with no smoothing
-      const styleId = `__px_${level}`;
-      const s = Object.assign(document.createElement("style"), { id: styleId });
-      s.textContent = `.trivquic-fx { transform: scale(${factor}); transform-origin: top left; image-rendering: pixelated; width: ${invPct}%; height: ${invPct}%; overflow: hidden; }`;
-      document.head.appendChild(s);
+      const blockSize = level * 12; // 12px, 24px, 36px...
+      const c = makeCanvas(9990 + level);
+      const ctx2 = c.getContext("2d")!;
+      const W = c.width, H = c.height;
+      // Sample colors from a gradient palette and fill blocks
+      for (let x = 0; x < W; x += blockSize) {
+        for (let y = 0; y < H; y += blockSize) {
+          const hue = (x / W * 360 + y / H * 120) % 360;
+          ctx2.fillStyle = `hsla(${hue},40%,10%,0.55)`;
+          ctx2.fillRect(x, y, blockSize - 1, blockSize - 1);
+        }
+      }
+      // Draw grid lines
+      ctx2.strokeStyle = "rgba(0,0,0,0.25)";
+      ctx2.lineWidth = 1;
+      for (let x = 0; x < W; x += blockSize) { ctx2.beginPath(); ctx2.moveTo(x,0); ctx2.lineTo(x,H); ctx2.stroke(); }
+      for (let y = 0; y < H; y += blockSize) { ctx2.beginPath(); ctx2.moveTo(0,y); ctx2.lineTo(W,y); ctx2.stroke(); }
       effectsRef.current.push({stop:()=>{
-        s.remove();
-        const lvl = parseInt(root.dataset.pixelLevel || "1") - 1;
-        root.dataset.pixelLevel = String(Math.max(0, lvl));
-        if (lvl <= 0) { root.style.cssText = ""; document.body.style.cssText = ""; }
+        c.remove();
+        root.dataset.pixelLevel = String(Math.max(0, parseInt(root.dataset.pixelLevel||"1")-1));
       }});
-      autoStop((durationSec??15)*1000);return;
+      autoStop((durationSec??15)*1000); return;
     }
 
     // ── DRUNK ─────────────────────────────────────────────────────────
