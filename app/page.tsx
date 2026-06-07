@@ -1639,18 +1639,18 @@ export default function Home() {
       let stopped2=false; let raf2:number; let t2=0;
       const orig = root.style.transform;
       const tick=()=>{if(stopped2){root.style.transform=orig;return;}t2++;const x=(Math.random()-0.5)*16;const y=(Math.random()-0.5)*16;root.style.transform=`translate(${x}px,${y}px)`;raf2=requestAnimationFrame(tick);};
-      tick();effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);root.style.transform=orig;}});return;
+      tick();effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);root.style.transform=orig;}});autoStop((durationSec??10)*1000);return;
     }
     if (cmd === "blackout") {
       const c=makeCanvas(99999); const ctx2=c.getContext("2d")!;
       ctx2.fillStyle="#000";ctx2.fillRect(0,0,c.width,c.height);
-      effectsRef.current.push({stop:()=>c.remove()});return;
+      effectsRef.current.push({stop:()=>c.remove()});autoStop((durationSec??10)*1000);return;
     }
     if (cmd === "strobe") {
       let stopped2=false; let raf2:number; let on=false;
       const c=makeCanvas(99999); const ctx2=c.getContext("2d")!;
       const tick=()=>{if(stopped2){c.remove();return;}on=!on;ctx2.fillStyle=on?"rgba(255,255,255,0.9)":"rgba(0,0,0,0)";ctx2.clearRect(0,0,c.width,c.height);if(on)ctx2.fillRect(0,0,c.width,c.height);setTimeout(()=>{raf2=requestAnimationFrame(tick);},50);};
-      tick();effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();}});return;
+      tick();effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();}});autoStop((durationSec??10)*1000);return;
     }
     if (cmd === "upsidedown") {
       root.style.transform="rotate(180deg)";
@@ -1660,14 +1660,14 @@ export default function Home() {
       const c=makeCanvas(99999); const ctx2=c.getContext("2d")!;
       let progress=0; let raf2:number; let stopped2=false;
       const tick=()=>{if(stopped2){c.remove();return;}progress=Math.min(progress+0.03,1);ctx2.clearRect(0,0,c.width,c.height);ctx2.fillStyle="#000";const h=c.height*progress;const y=(c.height-h)/2;ctx2.fillRect(0,0,c.width,y);ctx2.fillRect(0,y+h,c.width,c.height-y-h);if(h<2){ctx2.fillRect(0,0,c.width,c.height);effectsRef.current.push({stop:()=>c.remove()});return;}raf2=requestAnimationFrame(tick);};
-      tick();effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();}});return;
+      tick();effectsRef.current.push({stop:()=>{stopped2=true;cancelAnimationFrame(raf2);c.remove();}});autoStop((durationSec??4)*1000);return;
     }
     if (cmd === "windows") {
       const d=document.createElement("div");
       d.style.cssText="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:#ECE9D8;border:2px solid #0054E3;border-radius:4px;width:380px;font-family:Tahoma,sans-serif;font-size:12px;box-shadow:4px 4px 10px rgba(0,0,0,0.5)";
       d.innerHTML=`<div style="background:linear-gradient(to right,#0054E3,#3A93FF);color:#fff;padding:4px 8px;display:flex;justify-content:space-between;align-items:center;font-weight:bold;font-size:13px"><span>⚠️ TrivQuic.exe</span><button onclick="this.closest('div[style]').remove()" style="background:#red;border:1px solid #fff;color:#fff;font-weight:bold;padding:0 4px;cursor:pointer;font-size:11px">✕</button></div><div style="padding:16px;display:flex;gap:12px;align-items:flex-start"><span style="font-size:32px">⚠️</span><div><p style="margin:0 0 8px;color:#000">TrivQuic has encountered a problem and needs to close. We are sorry for the inconvenience.</p><p style="margin:0;color:#000">Error: <b>FATAL_TRIVIA_EXCEPTION</b><br/>Module: quictriv.dll</p></div></div><div style="text-align:right;padding:8px 16px;border-top:1px solid #ACA899"><button onclick="this.closest('div[style]').remove()" style="padding:4px 16px;background:#ECE9D8;border:1px solid #888;cursor:pointer">OK</button></div>`;
       document.body.appendChild(d);
-      effectsRef.current.push({stop:()=>d.remove()});return;
+      effectsRef.current.push({stop:()=>d.remove()});autoStop((durationSec??15)*1000);return;
     }
     if (cmd === "bsod") {
       const c=makeCanvas(99999); const ctx2=c.getContext("2d")!;
@@ -1677,7 +1677,7 @@ export default function Home() {
       ctx2.font="16px monospace";ctx2.fillText("We're just collecting some error info, and then we'll restart for you.", 60, c.height*0.55);
       ctx2.fillText("100% complete", 60, c.height*0.65);
       ctx2.font="14px monospace";ctx2.fillText("Stop code: TRIVQUIC_FATAL_ERROR", 60, c.height*0.78);
-      effectsRef.current.push({stop:()=>c.remove()});return;
+      effectsRef.current.push({stop:()=>c.remove()});autoStop((durationSec??15)*1000);return;
     }
     if (cmd === "loading") {
       const d=document.createElement("div");
@@ -2193,17 +2193,17 @@ export default function Home() {
         remove(ref(db, `users/${u.uid}/pendingBanNotif`)).catch(() => {});
       });
 
-      // Listen to active global effects — run if timer still has time left
-      let activeEffectsInitDone = false;
+      // Listen to active global effects — track which we've already started
+      const startedEffectKeys = new Set<string>();
       onValue(ref(db, "config/activeEffects"), (snap) => {
         if (!snap.exists()) return;
         const effects = snap.val() as Record<string, {cmd:string;durationSec:number;startedAt:number}>;
-        Object.values(effects).forEach(({ cmd, durationSec, startedAt }) => {
+        Object.entries(effects).forEach(([key, { cmd, durationSec, startedAt }]) => {
+          if (startedEffectKeys.has(key)) return; // already running this one
           const elapsed = (Date.now() - startedAt) / 1000;
           const remaining = Math.floor(durationSec - elapsed);
-          if (remaining > 2) runCommand(cmd, remaining); // still has time — run it
+          if (remaining > 2) { startedEffectKeys.add(key); runCommand(cmd, remaining); }
         });
-        activeEffectsInitDone = true;
       });
 
       // pendingCmd — run a command sent by admin
