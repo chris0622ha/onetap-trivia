@@ -2601,13 +2601,24 @@ export default function Home() {
         </>)}
         {type === "updates" && (<>
           {[
-            { version:"v1.84 — Friday, June 5, 2026", date:"Friday, June 5, 2026", items:[
+            { version:"v1.85 — Saturday, June 6, 2026", date:"Saturday, June 6, 2026", items:[
   "⚡ Secret command palette (admin only) — press ` or Ctrl+K to open",
   "🎆 30+ commands: fireworks, confetti, party, snow, matrix, bubbles, lasers, dvd, love, rage, rainbow, invert, neon, vhs, glitch, shake, spin, zoom, flip, mirror, pixelate, drunk, comic sans, tiny, huge, zalgo, reverse, hack, sudo, 404, friday, midnight, new year, rickroll + more",
   "📡 Global broadcast — run any effect on Everyone, or by badge (Crown/Gold/Silver/Bronze)",
   "🙋 Personal Only column for nav shortcuts, 🌐 Global column for broadcastable effects",
   "Stack multiple effects simultaneously for chaos",
   "⏹ Stop + ↩ Undo buttons in command palette header — kill all effects instantly",
+  "👤 Target one specific user with any cmd palette command",
+  "📢 Announcement system — post permanent or timed announcements visible on all screens",
+  "🌧️ 20+ new effects: rain, fireflies, stars, aurora, smoke, lightning, hypno, pulse, wave, caps, chaos, melt, explode, implode, balloons, countdown, applause, blackout, strobe, oldtv, bsod, windows xp, loading",
+  "🎯 All commands respect duration input — set exactly how long effects run",
+  "✅ Effects persist for late joiners if timer still has time remaining",
+  "🔄 Stop/Undo properly remove effects from Firebase — no re-run on refresh",
+  "🏅 Badge sessions require 10+ minutes to count toward auto-badges",
+  "🐛 Fixed: admin System panel crash on mobile",
+  "🐛 Fixed: push notification duplicate (New notification from TrivQuic)",
+  "🐛 Fixed: effects no longer move the command palette or announcement banner",
+  "🐛 Fixed: announcement updates in real-time for all users",",
   "Duration field for every command — set how long effects last before auto-stopping",
   "Command palette mobile-friendly — fits phone screens, columns stack vertically",
   "Ban screen shows admin username instead of 'TrivQuic Admin'",
