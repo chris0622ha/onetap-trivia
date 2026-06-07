@@ -2677,6 +2677,21 @@ export default function Home() {
         🌐 {LANGUAGES.find(l => l.code === currentLang)?.flag || "🌐"}
       </button>
 
+      {/* Admin announcement buttons — visible on all screens */}
+      {userData?.isAdmin && (
+        <div data-protect="1" style={{ position:"fixed", bottom: isMobile ? "calc(72px + env(safe-area-inset-bottom, 0px))" : "auto", top: isMobile ? "auto" : (announcement ? 86 : 48), left:"50%", transform:"translateX(-50%)", zIndex:1000, display:"flex", gap:6 }}>
+          <div onClick={() => setAnnounceModal(true)}
+            style={{ background:"#f59e0b", color:"#000", fontSize:11, fontWeight:700, padding:"5px 10px", borderRadius:20, cursor:"pointer", whiteSpace:"nowrap" as const, boxShadow:"0 2px 8px rgba(0,0,0,0.4)" }}>
+            📢 {isMobile ? "" : "Announcement"}
+          </div>
+          {announcement && (
+            <div onClick={async () => { await remove(ref(db, "config/announcement")); setAnnouncement(null); }}
+              style={{ background:"#ef4444", color:"#fff", fontSize:11, fontWeight:700, padding:"5px 10px", borderRadius:20, cursor:"pointer", whiteSpace:"nowrap" as const, boxShadow:"0 2px 8px rgba(0,0,0,0.4)" }}>
+              ✕ {isMobile ? "" : "Delete"}
+            </div>
+          )}
+        </div>
+      )}
       {/* Sign out confirm modal */}
       {showSignOutConfirm && (
         <div onClick={() => setShowSignOutConfirm(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
@@ -3080,20 +3095,7 @@ function SearchUsersModal({ currentUser, currentUserData, onClose, onViewProfile
   if (screen === "home") return (
     <div className="trivquic-fx" style={{ minHeight:"100vh", background:"#0f0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:`${announcement ? 112 : 72}px 16px 20px`, color:"#fff" }}>
       <AuthHeader />
-      {userData?.isAdmin && (
-        <div data-protect="1" style={{ position:"fixed", bottom: isMobile ? "calc(72px + env(safe-area-inset-bottom, 0px))" : "auto", top: isMobile ? "auto" : (announcement ? 86 : 48), left:"50%", transform:"translateX(-50%)", zIndex:1000, display:"flex", gap:6 }}>
-          <div onClick={() => setAnnounceModal(true)}
-            style={{ background:"#f59e0b", color:"#000", fontSize:11, fontWeight:700, padding:"5px 10px", borderRadius:20, cursor:"pointer", whiteSpace:"nowrap" as const, boxShadow:"0 2px 8px rgba(0,0,0,0.4)" }}>
-            📢 {isMobile ? "" : "Announcement"}
-          </div>
-          {announcement && (
-            <div onClick={async () => { await remove(ref(db, "config/announcement")); setAnnouncement(null); }}
-              style={{ background:"#ef4444", color:"#fff", fontSize:11, fontWeight:700, padding:"5px 10px", borderRadius:20, cursor:"pointer", whiteSpace:"nowrap" as const, boxShadow:"0 2px 8px rgba(0,0,0,0.4)" }}>
-              ✕ {isMobile ? "" : "Delete"}
-            </div>
-          )}
-        </div>
-      )}
+
 
 
       {duelChallenges.length > 0 && (
